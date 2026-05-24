@@ -1,0 +1,111 @@
+.libraryPanel {
+    position: absolute;
+    left: 0;
+    top: 50px; /* Отступ на высоту верхней панели с кнопками сохранения */
+    bottom: 0;
+    width: 320px;
+    background: #FFFFFF;
+    border-right: 1px solid #e0e0e0;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Raleway', sans-serif;
+    overflow-y: auto;
+    transition: opacity 0.2s ease, transform 0.3s ease;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 20px 16px;
+}
+
+.headerTitle {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #000000;
+}
+
+.searchIcon {
+    cursor: pointer;
+    color: #155DA4;
+}
+
+.section {
+    padding: 0 20px 24px;
+}
+
+.sectionTitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: #000000;
+    margin-bottom: 16px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px 12px;
+}
+
+.itemWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.componentBox {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 1.5px solid #155DA4;
+    border-radius: 12px;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.componentBox:active {
+    cursor: grabbing;
+}
+
+.componentBox:hover {
+    box-shadow: 0 4px 12px rgba(21, 93, 164, 0.15);
+    transform: translateY(-2px);
+}
+
+.itemLabel {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333333;
+    text-align: center;
+}
+
+/* Иконки внутри коробочек */
+.mockButton {
+    background: #155DA4;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 4px;
+}
+
+.mockTable {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    width: 60%;
+    height: 60%;
+}
+.mockTableCell {
+    background: #155DA4;
+    width: 100%;
+    height: 100%;
+}

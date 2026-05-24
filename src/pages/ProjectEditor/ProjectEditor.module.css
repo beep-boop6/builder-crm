@@ -1,0 +1,20 @@
+.editorContainer {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5f5f5;
+}
+
+.canvasWrapper {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+.propertiesPanelWrapper {
+    width: 300px;
+    height: 100%;
+    flex-shrink: 0;
+}

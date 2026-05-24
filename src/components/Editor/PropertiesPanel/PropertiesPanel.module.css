@@ -1,0 +1,165 @@
+/* Основной контейнер панели */
+.propertiesPanel {
+    width: 320px;
+    height: 100%;
+    background: #FFFFFF;
+    border-left: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+    font-family: 'Raleway', sans-serif;
+    overflow-y: auto; /* Добавлен скролл для большого кол-ва параметров */
+}
+
+/* Контейнер контента */
+.content {
+    padding: 30px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Немного уменьшили gap чтобы влезло больше */
+}
+
+/* Главный заголовок "Параметры" */
+.mainTitle {
+    margin: 0;
+    margin-bottom: 8px;
+    font-size: 32px;
+    font-weight: 700;
+    color: #000000;
+}
+
+/* Группы параметров (Размер, Положение и тд) */
+.sectionGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Заголовки подгрупп */
+.sectionTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+}
+
+/* Строка для инпутов (W/H, X/Y) */
+.row {
+    display: flex;
+    gap: 16px;
+}
+
+/* Обертка инпута для создания красивой рамки и префикса */
+.inputWrapper {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid #155DA4;
+    border-radius: 8px;
+    padding: 8px 12px;
+    flex: 1;
+    background: #FFFFFF;
+    transition: all 0.2s ease;
+}
+
+.inputWrapper:focus-within {
+    box-shadow: 0 0 0 2px rgba(21, 93, 164, 0.2);
+}
+
+/* Буквы W, H, X, Y внутри инпутов */
+.prefix {
+    font-size: 14px;
+    color: #000000;
+    margin-right: 12px;
+    font-weight: 600;
+}
+
+/* Сброс стилей стандартного инпута */
+.input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 14px;
+    color: #333333;
+    background: transparent;
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* --- Настройка выбора цвета --- */
+
+.colorWrapper {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid #155DA4;
+    border-radius: 8px;
+    padding: 6px 12px;
+    background: #FFFFFF;
+    gap: 12px;
+}
+
+/* Контейнер для кастомного квадратика цвета */
+.colorPickerContainer {
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    border: 1px solid #ccc;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.colorInputSquare {
+    width: 40px;
+    height: 40px; /* Делаем больше чтобы скрыть стандартные рамки input color */
+    border: none;
+    outline: none;
+    cursor: pointer;
+    background: none;
+    color: #155DA4;
+    padding: 0;
+}
+
+.hexInput {
+    border: none;
+    outline: none;
+    width: 100%;
+    background: transparent;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+/* --- Подвал панели --- */
+.footer {
+    padding: 24px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.deleteButton {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    color: #ff4d4f;
+    border: 1px dashed #ff4d4f;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.deleteButton:hover {
+    background: #fff1f0;
+}
+
+.emptyState {
+    padding: 60px 24px;
+    text-align: center;
+    color: #8c8c8c;
+    font-size: 15px;
+}

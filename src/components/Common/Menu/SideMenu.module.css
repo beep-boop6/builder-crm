@@ -1,0 +1,75 @@
+.sideMenu {
+    display: flex;
+    flex-direction: column;
+    width: 50px;
+    height: 100vh;
+    background: #fff;
+    border-right: 2px solid #F0F0F0;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    padding: 0;
+}
+
+.logoSection {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 15px; /* отступ от верхнего края */
+    cursor: pointer;
+    padding: 0 10px; /* отступы с боков по 10px */
+}
+
+.logoImage {
+    width: 30px;
+    height: 30px;
+    display: block;
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0; /* убираем padding, кнопки сами управляют отступами */
+}
+
+.menuButton {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    color: #262626;
+}
+
+.menuButton:hover {
+    background: #f5f5f5;
+}
+
+.iconImage {
+    width: 30px;
+    height: 30px;
+    display: block;
+    object-fit: contain;
+}
+.bottomPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: auto; /* прижимает к низу */
+    padding-bottom: 15px; /* отступ от низа */
+    width: 100%;
+}
+.upperPanel {
+    margin-top: 40px;
+    align-self: center;
+}
+
