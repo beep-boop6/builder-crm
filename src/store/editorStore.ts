@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { projectService } from '../services/projectService';
+import { signalrService } from '../services/signalrService';
 import { Page } from '../types';
 
 export interface EditorComponent {
@@ -16,7 +17,7 @@ export interface EditorComponent {
     fontWeight?: number;
     color?: string;
     borderRadius?: number;
-    zIndex?: number; // Добавлено для слоев
+    zIndex?: number;
 }
 
 interface EditorState {
@@ -30,24 +31,24 @@ interface EditorState {
     selectedComponentId: string | null;
     contextMenu: { x: number; y: number; visible: boolean; };
     
-    // История
     saveHistory: () => void;
     undo: () => void;
     redo: () => void;
     
-    // Компоненты
     addComponent: (component: Omit<EditorComponent, 'id'>) => void;
     updateComponent: (id: string, updates: Partial<EditorComponent>) => void;
     deleteComponent: (id: string) => void;
     bringToFront: (id: string) => void;
     sendToBack: (id: string) => void;
     
-    // Страницы
+    // ЭКШЕНЫ СОКЕТОВ (прием данных от сервера)
+    updateElementFromSocket: (id: string, json: string) => void;
+    deleteElementFromSocket: (id: string) => void;
+    
     addPage: (title: string, route: string) => void;
     setCurrentPage: (pageId: string) => void;
     deletePage: (pageId: string) => void;
 
-    // UI и Инициализация
     selectComponent: (id: string | null) => void;
     clearSelection: () => void;
     showContextMenu: (x: number, y: number) => void;
@@ -82,42 +83,76 @@ export const useEditorStore = create<EditorState>()(
                 return { past: [...state.past, state.components], future: state.future.slice(1), components: next, selectedComponentId: null };
             }),
 
+            // ЛОКАЛЬНЫЕ ИЗМЕНЕНИЯ (Отправляем на сервер)
             addComponent: (component) => {
                 get().saveHistory();
                 const newComponent: EditorComponent = {
                     ...component,
                     id: `comp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-                    zIndex: 1, // Дефолтный слой
+                    zIndex: 1,
                 };
                 set((state) => ({ components: [...state.components, newComponent], selectedComponentId: newComponent.id }));
+                
+                // Транслируем всем через сокет
+                signalrService.sendElementState(newComponent.id, JSON.stringify(newComponent));
             },
 
             updateComponent: (id, updates) => {
                 get().saveHistory();
-                set((state) => ({ components: state.components.map(c => c.id === id ? { ...c, ...updates } : c) }));
+                let updatedComponentData: EditorComponent | null = null;
+                
+                set((state) => {
+                    const newComponents = state.components.map(c => {
+                        if (c.id === id) {
+                            const updated = { ...c, ...updates };
+                            updatedComponentData = updated;
+                            return updated;
+                        }
+                        return c;
+                    });
+                    return { components: newComponents };
+                });
+
+                if (updatedComponentData) {
+                    signalrService.sendElementState(id, JSON.stringify(updatedComponentData));
+                }
             },
 
             deleteComponent: (id) => {
                 get().saveHistory();
                 set((state) => ({ components: state.components.filter(c => c.id !== id), selectedComponentId: state.selectedComponentId === id ? null : state.selectedComponentId }));
+                signalrService.deleteElement(id);
             },
 
             bringToFront: (id) => {
-                get().saveHistory();
-                set((state) => {
-                    const maxZ = Math.max(0, ...state.components.map(c => c.zIndex || 1));
-                    return { components: state.components.map(c => c.id === id ? { ...c, zIndex: maxZ + 1 } : c) };
-                });
+                get().updateComponent(id, { zIndex: Math.max(0, ...get().components.map(c => c.zIndex || 1)) + 1 });
             },
 
             sendToBack: (id) => {
-                get().saveHistory();
-                set((state) => {
-                    const minZ = Math.min(2, ...state.components.map(c => c.zIndex || 1));
-                    return { components: state.components.map(c => c.id === id ? { ...c, zIndex: minZ - 1 } : c) };
-                });
+                get().updateComponent(id, { zIndex: Math.min(2, ...get().components.map(c => c.zIndex || 1)) - 1 });
             },
 
+            // СОБЫТИЯ ОТ СОКЕТОВ (Получаем от сервера)
+            updateElementFromSocket: (id, json) => {
+                try {
+                    const parsed = JSON.parse(json) as EditorComponent;
+                    set((state) => {
+                        const exists = state.components.some(c => c.id === id);
+                        if (exists) {
+                            return { components: state.components.map(c => c.id === id ? { ...c, ...parsed } : c) };
+                        }
+                        return { components: [...state.components, parsed] };
+                    });
+                } catch (e) {
+                    console.error('Ошибка парсинга компонента из сокета:', e);
+                }
+            },
+
+            deleteElementFromSocket: (id) => {
+                set((state) => ({ components: state.components.filter(c => c.id !== id) }));
+            },
+
+            // Страницы и инициализация (остаются без изменений)
             addPage: (title, route) => {
                 set((state) => {
                     const newPage: Page = { id: `page_${Date.now()}`, title, route, components: [], order: state.pages.length + 1 };
@@ -127,26 +162,15 @@ export const useEditorStore = create<EditorState>()(
             },
 
             deletePage: (pageId) => {
-                set((state) => {
-                    const newPages = state.pages.filter(p => p.id !== pageId);
-                    return { pages: newPages };
-                });
+                set((state) => ({ pages: state.pages.filter(p => p.id !== pageId) }));
                 get().saveToProject();
             },
 
             setCurrentPage: (pageId) => {
                 set((state) => {
-                    // Сохраняем текущие компоненты в текущую страницу перед переключением
-                    const updatedPages = state.pages.map(p => 
-                        p.id === state.currentPageId ? { ...p, components: state.components } : p
-                    );
+                    const updatedPages = state.pages.map(p => p.id === state.currentPageId ? { ...p, components: state.components } : p);
                     const targetPage = updatedPages.find(p => p.id === pageId);
-                    return {
-                        pages: updatedPages,
-                        currentPageId: pageId,
-                        components: targetPage?.components || [],
-                        past: [], future: [], selectedComponentId: null
-                    };
+                    return { pages: updatedPages, currentPageId: pageId, components: targetPage?.components || [], past: [], future: [], selectedComponentId: null };
                 });
             },
 
@@ -156,28 +180,14 @@ export const useEditorStore = create<EditorState>()(
             hideContextMenu: () => set((state) => ({ contextMenu: { ...state.contextMenu, visible: false } })),
 
             initProject: (projectId, pages, legacyComponents) => {
-                // Если старый проект без страниц, создаем фейковую
-                const initialPages = pages?.length > 0 ? pages : [{
-                    id: 'default', title: 'Главная', route: '/', components: legacyComponents || [], order: 1
-                }];
-                set({ 
-                    projectId, 
-                    pages: initialPages,
-                    currentPageId: initialPages[0].id,
-                    components: initialPages[0].components || [], 
-                    selectedComponentId: null, past: [], future: []
-                });
+                const initialPages = pages?.length > 0 ? pages : [{ id: 'default', title: 'Главная', route: '/', components: legacyComponents || [], order: 1 }];
+                set({ projectId, pages: initialPages, currentPageId: initialPages[0].id, components: initialPages[0].components || [], selectedComponentId: null, past: [], future: [] });
             },
 
             saveToProject: async () => {
                 const state = get();
                 if (!state.projectId) return;
-                
-                // Синхронизируем текущий холст со страницей перед сохранением
-                const updatedPages = state.pages.map(p => 
-                    p.id === state.currentPageId ? { ...p, components: state.components } : p
-                );
-                
+                const updatedPages = state.pages.map(p => p.id === state.currentPageId ? { ...p, components: state.components } : p);
                 try {
                     await projectService.update(state.projectId, { pages: updatedPages });
                     set({ pages: updatedPages });

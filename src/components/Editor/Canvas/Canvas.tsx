@@ -1,6 +1,7 @@
 import { useEditorStore, EditorComponent } from '@/store/editorStore';
 import { Rnd } from 'react-rnd';
 import { useCallback, useRef, useEffect } from 'react';
+import { signalrService } from '@/services/signalrService';
 import styles from './Canvas.module.css';
 
 interface CanvasProps {
@@ -45,7 +46,11 @@ export const Canvas = ({ components }: CanvasProps) => {
             const maxY = Math.max(0, bounds.height - component.height);
             const newX = Math.max(0, Math.min(data.x, maxX));
             const newY = Math.max(0, Math.min(data.y, maxY));
+            
             updateComponent(id, { x: newX, y: newY });
+            
+            // Отправляем финальную позицию в базу данных через сокет
+            signalrService.saveElementPosition(id);
         }
     }, [components, updateComponent, getCanvasBounds]);
 
@@ -54,7 +59,11 @@ export const Canvas = ({ components }: CanvasProps) => {
         if (component) {
             const newWidth = Math.max(MIN_WIDTH, parseInt(ref.style.width, 10));
             const newHeight = Math.max(MIN_HEIGHT, parseInt(ref.style.height, 10));
+            
             updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
+            
+            // Отправляем финальный размер и позицию в базу данных через сокет
+            signalrService.saveElementPosition(id);
         }
     }, [components, updateComponent]);
 
