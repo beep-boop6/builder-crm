@@ -14,4 +14,10 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
+    ssr: {
+        external: ['recharts'],
+    },
+    optimizeDeps: {
+        include: ['recharts'],
+    },
 });

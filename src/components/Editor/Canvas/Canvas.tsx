@@ -4,6 +4,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { signalrService } from '@/services/signalrService';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
+import { ChartWidget } from '../CanvasComponents/ChartWidget';
 
 interface CanvasProps {
     components: EditorComponent[];
@@ -148,6 +149,15 @@ export const Canvas = ({ components }: CanvasProps) => {
         if (component.type === 'table') {
             return (
                 <TableWidget 
+                    componentId={component.id} 
+                    props={component.props || {}} 
+                />
+            );
+        }
+
+        if (component.type === 'chart') {
+            return (
+                <ChartWidget 
                     componentId={component.id} 
                     props={component.props || {}} 
                 />
