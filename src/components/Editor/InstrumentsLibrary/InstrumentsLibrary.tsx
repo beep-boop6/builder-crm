@@ -1,27 +1,24 @@
 import React, { useState } from 'react';
+import { useEditorStore } from '@/store/editorStore';
 import styles from './InstrumentsLibrary.module.css';
 
 interface Props {
     isOpen: boolean;
 }
 
-const RECENT_COMPONENTS = [
+// Все доступные компоненты
+const AVAILABLE_COMPONENTS = [
     { type: 'button', label: 'Кнопка' },
     { type: 'table', label: 'Таблица' },
-    { type: 'placeholder', label: 'Название' },
-];
-
-const ALL_COMPONENTS = [
-    { type: 'placeholder', label: 'Название' },
-    { type: 'placeholder', label: 'Название' },
-    { type: 'placeholder', label: 'Название' },
-    { type: 'placeholder', label: 'Название' },
-    { type: 'placeholder', label: 'Название' },
-    { type: 'placeholder', label: 'Название' },
+    { type: 'chart', label: 'График' },
+    { type: 'form', label: 'Форма' },
+    { type: 'card', label: 'Карточка' },
+    { type: 'filter', label: 'Фильтр' },
 ];
 
 export const InstrumentsLibrary = ({ isOpen }: Props) => {
     const [isDragging, setIsDragging] = useState(false);
+    const recentComponentTypes = useEditorStore((state) => state.recentComponents);
 
     if (!isOpen) return null;
 
@@ -43,8 +40,17 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                 {[...Array(9)].map((_, i) => <div key={i} className={styles.mockTableCell} />)}
             </div>
         );
+        if (type === 'chart') return <div className={styles.mockChart}>📊</div>;
+        if (type === 'form') return <div className={styles.mockForm}>📝</div>;
+        if (type === 'card') return <div className={styles.mockCard}>🗂️</div>;
+        if (type === 'filter') return <div className={styles.mockFilter}>🔍</div>;
         return null;
     };
+
+    // Получаем реальные объекты компонентов на основе сохраненных типов
+    const recentItems = recentComponentTypes
+        .map(type => AVAILABLE_COMPONENTS.find(c => c.type === type))
+        .filter(Boolean);
 
     return (
         <div 
@@ -62,27 +68,31 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
             <div className={styles.section}>
                 <div className={styles.sectionTitle}>Недавно использованные</div>
                 <div className={styles.grid}>
-                    {RECENT_COMPONENTS.map((comp, idx) => (
-                        <div key={`recent-${idx}`} className={styles.itemWrapper}>
-                            <div 
-                                className={styles.componentBox}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, comp.type)}
-                                onDragEnd={handleDragEnd}
-                            >
-                                {renderIcon(comp.type)}
+                    {recentItems.length > 0 ? (
+                        recentItems.map((item) => (
+                            <div key={`recent-${item!.type}`} className={styles.itemWrapper}>
+                                <div 
+                                    className={styles.componentBox}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, item!.type)}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    {renderIcon(item!.type)}
+                                </div>
+                                <span className={styles.itemLabel}>{item!.label}</span>
                             </div>
-                            <span className={styles.itemLabel}>{comp.label}</span>
-                        </div>
-                    ))}
+                        ))
+                    ) : (
+                        <span className={styles.emptyRecent}>Нет недавних</span>
+                    )}
                 </div>
             </div>
 
             <div className={styles.section}>
-                <div className={styles.sectionTitle}>Компонент</div>
+                <div className={styles.sectionTitle}>Компоненты</div>
                 <div className={styles.grid}>
-                    {ALL_COMPONENTS.map((comp, idx) => (
-                        <div key={`all-${idx}`} className={styles.itemWrapper}>
+                    {AVAILABLE_COMPONENTS.map((comp) => (
+                        <div key={`all-${comp.type}`} className={styles.itemWrapper}>
                             <div 
                                 className={styles.componentBox}
                                 draggable

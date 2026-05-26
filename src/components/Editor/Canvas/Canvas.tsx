@@ -3,6 +3,7 @@ import { Rnd } from 'react-rnd';
 import { useCallback, useRef, useEffect } from 'react';
 import { signalrService } from '@/services/signalrService';
 import styles from './Canvas.module.css';
+import { TableWidget } from '../CanvasComponents/TableWidget';
 
 interface CanvasProps {
     components: EditorComponent[];
@@ -146,16 +147,10 @@ export const Canvas = ({ components }: CanvasProps) => {
 
         if (component.type === 'table') {
             return (
-                <div style={{ ...commonStyles, flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', border: `1px solid ${component.backgroundColor}` }}>
-                    <div style={{ backgroundColor: component.backgroundColor, color: component.color, padding: '10px', textAlign: 'center', fontWeight: 700 }}>
-                        {component.text}
-                    </div>
-                    <div style={{ flex: 1, backgroundColor: '#f9f9f9', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px' }}>
-                        {[...Array(9)].map((_, i) => (
-                            <div key={i} style={{ backgroundColor: '#ffffff', minHeight: '30px' }} />
-                        ))}
-                    </div>
-                </div>
+                <TableWidget 
+                    componentId={component.id} 
+                    props={component.props || {}} 
+                />
             );
         }
 

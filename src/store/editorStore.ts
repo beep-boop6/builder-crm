@@ -18,6 +18,7 @@ export interface EditorComponent {
     color?: string;
     borderRadius?: number;
     zIndex?: number;
+    props?: Record<string, any>;
 }
 
 interface EditorState {
@@ -30,6 +31,7 @@ interface EditorState {
     future: EditorComponent[][];
     selectedComponentId: string | null;
     contextMenu: { x: number; y: number; visible: boolean; };
+    recentComponents: string[];
     
     saveHistory: () => void;
     undo: () => void;
@@ -37,6 +39,7 @@ interface EditorState {
     
     addComponent: (component: Omit<EditorComponent, 'id'>) => void;
     updateComponent: (id: string, updates: Partial<EditorComponent>) => void;
+    updateComponentProps: (id: string, props: Record<string, any>) => void;
     deleteComponent: (id: string) => void;
     bringToFront: (id: string) => void;
     sendToBack: (id: string) => void;
@@ -61,62 +64,83 @@ export const useEditorStore = create<EditorState>()(
     devtools(
         (set, get) => ({
             projectId: null,
-            pages: [],
-            currentPageId: null,
-            components: [],
-            past: [],
-            future: [],
-            selectedComponentId: null,
-            contextMenu: { x: 0, y: 0, visible: false },
+             pages: [],
+             currentPageId: null,
+             components: [],
+             past: [],
+             future: [],
+             selectedComponentId: null,
+             contextMenu: { x: 0, y: 0, visible: false },
+             recentComponents: [],
 
-            saveHistory: () => set((state) => ({ past: [...state.past, state.components], future: [] })),
+             saveHistory: () => set((state) => ({ past: [...state.past, state.components], future: [] })),
 
-            undo: () => set((state) => {
-                if (state.past.length === 0) return state;
-                const previous = state.past[state.past.length - 1];
-                return { past: state.past.slice(0, -1), future: [state.components, ...state.future], components: previous, selectedComponentId: null };
-            }),
+             undo: () => set((state) => {
+                 if (state.past.length === 0) return state;
+                 const previous = state.past[state.past.length - 1];
+                 return { past: state.past.slice(0, -1), future: [state.components, ...state.future], components: previous, selectedComponentId: null };
+             }),
 
-            redo: () => set((state) => {
-                if (state.future.length === 0) return state;
-                const next = state.future[0];
-                return { past: [...state.past, state.components], future: state.future.slice(1), components: next, selectedComponentId: null };
-            }),
+             redo: () => set((state) => {
+                 if (state.future.length === 0) return state;
+                 const next = state.future[0];
+                 return { past: [...state.past, state.components], future: state.future.slice(1), components: next, selectedComponentId: null };
+             }),
 
-            // ЛОКАЛЬНЫЕ ИЗМЕНЕНИЯ (Отправляем на сервер)
-            addComponent: (component) => {
-                get().saveHistory();
-                const newComponent: EditorComponent = {
-                    ...component,
-                    id: `comp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-                    zIndex: 1,
-                };
-                set((state) => ({ components: [...state.components, newComponent], selectedComponentId: newComponent.id }));
-                
-                // Транслируем всем через сокет
-                signalrService.sendElementState(newComponent.id, JSON.stringify(newComponent));
-            },
+             // ЛОКАЛЬНЫЕ ИЗМЕНЕНИЯ (Отправляем на сервер)
+             addComponent: (component) => {
+                 get().saveHistory();
+                 const newComponent: EditorComponent = {
+                     ...component,
+                     id: `comp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                     zIndex: 1,
+                 };
+                 
+                 // Обновляем список недавних компонентов (максимум 3, без дублей)
+                 const updatedRecent = [
+                     component.type, 
+                     ...get().recentComponents.filter(type => type !== component.type)
+                 ].slice(0, 3);
+                 
+                 set((state) => ({ 
+                     components: [...state.components, newComponent], 
+                     selectedComponentId: newComponent.id,
+                     recentComponents: updatedRecent
+                 }));
+                 
+                 // Транслируем всем через сокет
+                 signalrService.sendElementState(newComponent.id, JSON.stringify(newComponent));
+             },
 
-            updateComponent: (id, updates) => {
-                get().saveHistory();
-                let updatedComponentData: EditorComponent | null = null;
-                
-                set((state) => {
-                    const newComponents = state.components.map(c => {
-                        if (c.id === id) {
-                            const updated = { ...c, ...updates };
-                            updatedComponentData = updated;
-                            return updated;
-                        }
-                        return c;
-                    });
-                    return { components: newComponents };
-                });
+             updateComponent: (id, updates) => {
+                 get().saveHistory();
+                 let updatedComponentData: EditorComponent | null = null;
+                 
+                 set((state) => {
+                     const newComponents = state.components.map(c => {
+                         if (c.id === id) {
+                             const updated = { ...c, ...updates };
+                             updatedComponentData = updated;
+                             return updated;
+                         }
+                         return c;
+                     });
+                     return { components: newComponents };
+                 });
 
-                if (updatedComponentData) {
-                    signalrService.sendElementState(id, JSON.stringify(updatedComponentData));
-                }
-            },
+                 if (updatedComponentData) {
+                     signalrService.sendElementState(id, JSON.stringify(updatedComponentData));
+                 }
+             },
+
+             updateComponentProps: (id, props) => {
+                 get().saveHistory();
+                 set((state) => ({
+                     components: state.components.map(c => 
+                         c.id === id ? { ...c, props: { ...c.props, ...props } } : c
+                     )
+                 }));
+             },
 
             deleteComponent: (id) => {
                 get().saveHistory();
