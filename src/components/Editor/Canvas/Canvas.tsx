@@ -19,18 +19,19 @@ const MIN_WIDTH = 50;
 const MIN_HEIGHT = 30;
 
 export const Canvas = ({ components }: CanvasProps) => {
-    const {
-        updateComponent,
-        selectComponent,
-        selectedComponentId,
-        deleteComponent,
-        showContextMenu,
-        hideContextMenu,
-        contextMenu,
-        addComponent,
-        bringToFront,
-        sendToBack,
-    } = useEditorStore();
+     const {
+         updateComponent,
+         selectComponent,
+         selectedComponentId,
+         deleteComponent,
+         showContextMenu,
+         hideContextMenu,
+         contextMenu,
+         addComponent,
+         bringToFront,
+         sendToBack,
+         projectId,
+     } = useEditorStore();
     
     const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +53,9 @@ export const Canvas = ({ components }: CanvasProps) => {
             updateComponent(id, { x: newX, y: newY });
             
             // Отправляем финальную позицию в базу данных через сокет
-            signalrService.saveElementPosition(id);
+            if (projectId) {
+                signalrService.saveElementPosition(id, projectId);
+            }
         }
     }, [components, updateComponent, getCanvasBounds]);
 
@@ -65,7 +68,9 @@ export const Canvas = ({ components }: CanvasProps) => {
             updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
             
             // Отправляем финальный размер и позицию в базу данных через сокет
-            signalrService.saveElementPosition(id);
+            if (projectId) {
+                signalrService.saveElementPosition(id, projectId);
+            }
         }
     }, [components, updateComponent]);
 

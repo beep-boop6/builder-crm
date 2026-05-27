@@ -53,10 +53,10 @@ class SignalRService {
     }
 
     // Сохранение финальной позиции элемента в базу данных (когда пользователь отпустил элемент)
-    public async saveElementPosition(elementId: string): Promise<void> {
+    public async saveElementPosition(elementId: string, projectId: string): Promise<void> {
         if (this.connection?.state === signalR.HubConnectionState.Connected) {
             try {
-                await this.connection.invoke("SaveElementPositionAsync", elementId);
+                await this.connection.invoke("SaveElementPositionAsync", elementId, projectId);
             } catch (err) {
                 console.error("SignalR: Не удалось сохранить позицию элемента в БД:", err);
             }
