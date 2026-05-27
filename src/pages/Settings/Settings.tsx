@@ -1,5 +1,3 @@
-import { Button, Space } from 'antd';
-import { HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { DataSourcesManager } from '@/components/DataSources/DataSourcesManager';
 import styles from './Settings.module.css';
@@ -8,20 +6,27 @@ const SettingsPage = () => {
     const navigate = useNavigate();
 
     return (
-        <div className={styles.content}>
-            <div className={styles.header}>
-                <div>
-                    <h1>Настройки</h1>
-                    <p>Управление источниками данных для таблиц и графиков</p>
-                </div>
-                <Space>
-                    <Button icon={<HomeOutlined />} onClick={() => navigate('/')}>
+        <div className={styles.page}>
+            <div className={styles.card}>
+                <header className={styles.header}>
+                    <div className={styles.headerText}>
+                        <h1 className={styles.title}>Настройки</h1>
+                        <p className={styles.subtitle}>
+                            Здесь вы подключаете данные для таблиц и графиков в ваших приложениях.
+                            Ничего сложного — укажите название и откуда брать информацию.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        className={styles.backButton}
+                        onClick={() => navigate('/')}
+                    >
                         На главную
-                    </Button>
-                </Space>
-            </div>
+                    </button>
+                </header>
 
-            <DataSourcesManager />
+                <DataSourcesManager />
+            </div>
         </div>
     );
 };
