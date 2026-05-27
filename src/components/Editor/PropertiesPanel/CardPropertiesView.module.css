@@ -1,0 +1,61 @@
+.phoneRow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.phoneRowHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.phoneRowLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #155DA4;
+}
+
+.phoneActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.photoPreview {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #155DA4;
+}
+
+.photoBlock {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hiddenFileInput {
+    display: none;
+}
+
+.checkboxRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.checkboxRow input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    accent-color: #155DA4;
+    cursor: pointer;
+}

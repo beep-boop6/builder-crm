@@ -219,15 +219,27 @@ interface LayoutSectionsProps {
         zIndex?: number;
     };
     onUpdate: (key: 'width' | 'height' | 'x' | 'y' | 'zIndex', value: number) => void;
+    minWidth?: number;
+    minHeight?: number;
 }
 
-export const LayoutSections = ({ component, onUpdate }: LayoutSectionsProps) => (
+export const LayoutSections = ({ component, onUpdate, minWidth = 10, minHeight = 10 }: LayoutSectionsProps) => (
     <>
         <PropertySection title="Размер">
             <PropertyNumberRow
                 items={[
-                    { prefix: 'W', value: component.width, onChange: (v) => onUpdate('width', v), min: 10 },
-                    { prefix: 'H', value: component.height, onChange: (v) => onUpdate('height', v), min: 10 },
+                    {
+                        prefix: 'W',
+                        value: component.width,
+                        onChange: (v) => onUpdate('width', Math.max(minWidth, v)),
+                        min: minWidth,
+                    },
+                    {
+                        prefix: 'H',
+                        value: component.height,
+                        onChange: (v) => onUpdate('height', Math.max(minHeight, v)),
+                        min: minHeight,
+                    },
                 ]}
             />
         </PropertySection>

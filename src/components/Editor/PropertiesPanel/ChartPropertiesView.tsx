@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import type { EditorComponent } from '@/store/editorStore';
 import { useDataStore } from '@/store/dataStore';
+import { useComponentStore } from '@/store/componentStore';
+import { getComponentMinSize } from '@/utils/componentMinSize';
 import { ChartMappingSection } from './DataMappingSection';
 import {
     LayoutSections,
@@ -37,6 +39,8 @@ export const ChartPropertiesView = ({
         (component.props?.backgroundColor as string | undefined)
         ?? component.backgroundColor
         ?? '#FFFFFF';
+    const componentDefinition = useComponentStore.getState().getComponentDefinition(component.type);
+    const { minWidth, minHeight } = getComponentMinSize(component, componentDefinition);
 
     useEffect(() => {
         if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading && !source.error) {
@@ -116,6 +120,8 @@ export const ChartPropertiesView = ({
             <LayoutSections
                 component={component}
                 onUpdate={(key, value) => onUpdate(key, value)}
+                minWidth={minWidth}
+                minHeight={minHeight}
             />
         </>
     );

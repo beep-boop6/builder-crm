@@ -8,6 +8,7 @@ import { buildDefaultTableMappings } from '@/utils/dataMapping';
 import { SavePresetModal } from './SavePresetModal';
 import { TablePropertiesView } from './TablePropertiesView';
 import { ChartPropertiesView } from './ChartPropertiesView';
+import { CardPropertiesView } from './CardPropertiesView';
 import {
     AppearanceSection,
     LayoutSections,
@@ -17,6 +18,7 @@ import {
     PropertyTextInput,
     TypographySection,
 } from './PropertyFields';
+import { getComponentMinSize } from '@/utils/componentMinSize';
 import styles from './PropertiesPanel.module.css';
 
 export const PropertiesPanel = () => {
@@ -51,6 +53,7 @@ export const PropertiesPanel = () => {
 
     const componentDefinition = getComponentDefinition(selectedComponent.type);
     const componentLabel = componentDefinition?.name ?? selectedComponent.type;
+    const { minWidth, minHeight } = getComponentMinSize(selectedComponent, componentDefinition);
     const defaultPresetCategory = componentDefinition?.category ?? 'custom';
 
     const handleUpdate = (key: keyof EditorComponent, value: string | number) => {
@@ -124,43 +127,6 @@ export const PropertiesPanel = () => {
 
     const renderTypeSpecificSections = () => {
         const props = selectedComponent.props ?? {};
-
-        if (selectedComponent.type === 'card') {
-            return (
-                <>
-                    <PropertySection title="Контент">
-                        <PropertyTextInput
-                            value={(props.title as string) ?? ''}
-                            placeholder="Заголовок карточки"
-                            onChange={(event) => handleUpdateProp('title', event.target.value)}
-                        />
-                        <PropertyTextInput
-                            value={(props.content as string) ?? ''}
-                            placeholder="Содержимое"
-                            onChange={(event) => handleUpdateProp('content', event.target.value)}
-                        />
-                    </PropertySection>
-                    <PropertySection title="Поведение">
-                        <label className={styles.checkboxRow}>
-                            <input
-                                type="checkbox"
-                                checked={Boolean(props.showBorder)}
-                                onChange={(event) => handleUpdateProp('showBorder', event.target.checked)}
-                            />
-                            <span className={styles.checkboxLabel}>Показывать рамку</span>
-                        </label>
-                        <label className={styles.checkboxRow}>
-                            <input
-                                type="checkbox"
-                                checked={Boolean(props.hoverable)}
-                                onChange={(event) => handleUpdateProp('hoverable', event.target.checked)}
-                            />
-                            <span className={styles.checkboxLabel}>Эффект при наведении</span>
-                        </label>
-                    </PropertySection>
-                </>
-            );
-        }
 
         if (selectedComponent.type === 'form') {
             return (
@@ -274,10 +240,25 @@ export const PropertiesPanel = () => {
             );
         }
 
+        if (selectedComponent.type === 'card') {
+            return (
+                <CardPropertiesView
+                    component={selectedComponent}
+                    onUpdate={handleUpdate}
+                    onUpdateProps={(props) => updateComponentProps(selectedComponent.id, props)}
+                />
+            );
+        }
+
         return (
             <>
                 {renderTypeSpecificSections()}
-                <LayoutSections component={selectedComponent} onUpdate={handleUpdate} />
+                <LayoutSections
+                    component={selectedComponent}
+                    onUpdate={handleUpdate}
+                    minWidth={minWidth}
+                    minHeight={minHeight}
+                />
                 <AppearanceSection
                     borderRadius={selectedComponent.borderRadius ?? 4}
                     backgroundColor={selectedComponent.backgroundColor || '#FFFFFF'}

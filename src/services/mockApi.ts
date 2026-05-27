@@ -1,6 +1,7 @@
 import { Project, Page } from '../types';
 import { EditorComponent } from '../store/editorStore';
 import { generateGuid } from '../utils';
+import { sanitizeProjectsForStorage } from '../utils/sanitizeProjectStorage';
 
 const STORAGE_KEY = 'builder_crm_projects';
 
@@ -11,7 +12,18 @@ const getStoredProjects = (): Project[] => {
 };
 
 const saveProjects = (projects: Project[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    const sanitized = sanitizeProjectsForStorage(projects);
+
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+            throw new Error(
+                'Недостаточно места в хранилище браузера. Удалите старые фото из проектов или очистите данные сайта.'
+            );
+        }
+        throw error;
+    }
 };
 
 const generateId = () => generateGuid();
