@@ -1,5 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDataStore } from '../../../store/dataStore';
+import { applyChartMapping } from '@/utils/dataMapping';
+import { validateChartMapping } from '@/utils/dataValidation';
+import type { ChartFieldMapping, ComponentDataProps } from '@/types/data';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -12,9 +15,9 @@ import {
     Legend,
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
+import { chartBackgroundPlugin } from './chartBackgroundPlugin';
 import styles from './ChartWidget.module.css';
 
-// Регистрируем нужные модули Chart.js
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -23,105 +26,165 @@ ChartJS.register(
     BarElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    chartBackgroundPlugin
 );
 
 interface ChartWidgetProps {
     componentId: string;
-    props: any;
+    props: ComponentDataProps & Record<string, unknown>;
+    /** Фон области графика (из props или поля компонента) */
+    fillColor?: string;
 }
 
 const DEFAULT_DATA = [
     { name: 'Янв', value: 400 },
     { name: 'Фев', value: 300 },
     { name: 'Мар', value: 550 },
-    { name: 'Апр', value: 200 }
+    { name: 'Апр', value: 200 },
 ];
 
-export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props }) => {
+const normalizeHex = (value: string | undefined, fallback: string): string => {
+    if (!value) {
+        return fallback;
+    }
+    const trimmed = value.trim();
+    if (trimmed.startsWith('#')) {
+        return trimmed.length === 7 ? trimmed : fallback;
+    }
+    if (/^[0-9A-Fa-f]{6}$/.test(trimmed)) {
+        return `#${trimmed}`;
+    }
+    return fallback;
+};
+
+export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fillColor }) => {
     const { sources, loadData } = useDataStore();
 
     const dataSourceId = props.dataSourceId;
-    const source = sources.find(s => s.id === dataSourceId);
-
-    const isConfigured = dataSourceId && dataSourceId !== 'none';
-    const isLoading = source?.isLoading;
-    const hasError = !!source?.error;
+    const source = sources.find((item) => item.id === dataSourceId);
+    const isConfigured = Boolean(dataSourceId && dataSourceId !== 'none');
 
     useEffect(() => {
-        if (isConfigured && source && !source.data && !isLoading) {
-            loadData(dataSourceId);
+        if (isConfigured && source && !source.data && !source.isLoading && !source.error) {
+            loadData(dataSourceId!);
         }
-    }, [isConfigured, dataSourceId, source, isLoading, loadData]);
+    }, [isConfigured, dataSourceId, source, loadData]);
 
-    const hasRealData = isConfigured && source?.data && source.data.length > 0;
-    const data = hasRealData ? source.data : DEFAULT_DATA;
-
-    const chartType = props.chartType || 'bar';
-    const xAxisKey = props.xAxisKey || (hasRealData ? Object.keys(data[0])[0] : 'name');
-    const yAxisKey = props.yAxisKey || (hasRealData ? Object.keys(data[0])[1] : 'value');
-    const color = props.style?.color || '#1976d2';
-
-    // Подготавливаем данные в формате, понятном для Chart.js
-    const chartData = {
-        labels: data.map((item: any) => item[xAxisKey]),
-        datasets: [
-            {
-                label: yAxisKey || 'Значение',
-                data: data.map((item: any) => item[yAxisKey]),
-                backgroundColor: chartType === 'bar' ? color : 'transparent',
-                borderColor: color,
-                borderWidth: chartType === 'line' ? 3 : 1,
-                borderRadius: chartType === 'bar' ? 4 : 0, // Скругление столбцов
-                pointBackgroundColor: color,
-                pointRadius: 4,
-                tension: 0.3, // Плавность линии
-            },
-        ],
+    const chartMapping = (props.chartMapping as ChartFieldMapping | undefined) ?? {
+        xField: (props.xAxisKey as string) ?? '',
+        yField: (props.yAxisKey as string) ?? '',
     };
 
-    // Настройки отображения графика
-    const chartOptions = {
+    const chartState = useMemo(() => {
+        if (!isConfigured || !source?.data?.length) {
+            const fallback = applyChartMapping(DEFAULT_DATA, undefined, { xField: 'name', yField: 'value' });
+            return {
+                labels: fallback.labels,
+                values: fallback.values,
+                validationError: null as string | null,
+            };
+        }
+
+        const validation = validateChartMapping(source.data, chartMapping);
+        if (!validation.valid) {
+            return {
+                labels: [],
+                values: [],
+                validationError: validation.error ?? 'Ошибка маппинга',
+            };
+        }
+
+        const mapped = applyChartMapping(source.data, chartMapping, {
+            xField: props.xAxisKey as string | undefined,
+            yField: props.yAxisKey as string | undefined,
+        });
+
+        return {
+            labels: mapped.labels,
+            values: mapped.values,
+            validationError: null as string | null,
+        };
+    }, [chartMapping, isConfigured, props.xAxisKey, props.yAxisKey, source?.data]);
+
+    const chartType = (props.chartType as string) || 'bar';
+    const seriesColor = normalizeHex(
+        (props.style as { color?: string } | undefined)?.color
+            ?? (props.color as string | undefined),
+        '#1976d2'
+    );
+    const backgroundColor = normalizeHex(
+        fillColor
+            ?? (props.backgroundColor as string | undefined)
+            ?? (props.style as { backgroundColor?: string } | undefined)?.backgroundColor,
+        '#FFFFFF'
+    );
+
+    const chartData = useMemo(() => ({
+        labels: chartState.labels,
+        datasets: [
+            {
+                label: chartMapping.yField || 'Значение',
+                data: chartState.values,
+                backgroundColor: chartType === 'bar' ? seriesColor : 'transparent',
+                borderColor: seriesColor,
+                borderWidth: chartType === 'line' ? 3 : 1,
+                borderRadius: chartType === 'bar' ? 4 : 0,
+                pointBackgroundColor: seriesColor,
+                pointBorderColor: seriesColor,
+                pointRadius: 4,
+                tension: 0.3,
+            },
+        ],
+    }), [chartState.labels, chartState.values, chartMapping.yField, chartType, seriesColor]);
+
+    const chartOptions = useMemo(() => ({
         responsive: true,
-        maintainAspectRatio: false, // Отключаем жесткие пропорции, чтобы график тянулся за рамкой
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 display: true,
                 position: 'top' as const,
             },
+            customCanvasBackgroundColor: {
+                color: backgroundColor,
+            },
         },
         scales: {
             y: {
                 beginAtZero: true,
-                grid: { color: '#eee' }
+                grid: { color: '#e8e8e8' },
             },
             x: {
-                grid: { display: false }
-            }
+                grid: { display: false },
+            },
         },
-    };
+    }), [backgroundColor]);
 
     return (
-        <div id={componentId} className={styles.chartContainer}>
-
-            {/* Оверлей состояний */}
-            {(!isConfigured || isLoading || hasError) && (
-                <div className={styles.overlay}>
-                    {!isConfigured && <span style={{ color: '#555', fontSize: '14px', fontWeight: 500 }}>Выберите данные</span>}
-                    {isLoading && <span style={{ color: '#1976d2', fontSize: '14px', fontWeight: 500 }}>Загрузка...</span>}
-                    {hasError && <span style={{ color: 'red', fontSize: '14px', fontWeight: 500 }}>Ошибка</span>}
+        <div
+            id={componentId}
+            className={styles.chartContainer}
+            style={{ backgroundColor }}
+        >
+            {(!isConfigured || source?.isLoading || source?.error || chartState.validationError) && (
+                <div className={styles.overlay} style={{ backgroundColor: `${backgroundColor}d9` }}>
+                    {!isConfigured && <span className={styles.overlayText}>Выберите данные</span>}
+                    {source?.isLoading && <span className={styles.overlayText}>Загрузка...</span>}
+                    {source?.error && <span className={styles.overlayTextError}>{source.error}</span>}
+                    {chartState.validationError && (
+                        <span className={styles.overlayTextWarning}>{chartState.validationError}</span>
+                    )}
                 </div>
             )}
 
-            {/* Сам график */}
-            <div className={styles.chartInner} style={{ padding: '10px', boxSizing: 'border-box' }}>
+            <div className={styles.chartInner} style={{ backgroundColor }}>
                 {chartType === 'line' ? (
-                    <Line data={chartData} options={chartOptions} />
+                    <Line key={`${backgroundColor}-${seriesColor}-${chartType}`} data={chartData} options={chartOptions} />
                 ) : (
-                    <Bar data={chartData} options={chartOptions} />
+                    <Bar key={`${backgroundColor}-${seriesColor}-${chartType}`} data={chartData} options={chartOptions} />
                 )}
             </div>
-
         </div>
     );
 };

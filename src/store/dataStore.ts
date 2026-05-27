@@ -1,77 +1,186 @@
-// src/store/dataStore.ts
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { dataService } from '../services/dataService';
+import { getAvailableFields } from '@/utils/dataMapping';
+import { validateDataPayload } from '@/utils/dataValidation';
+import type { DataRow } from '@/utils/dataValidation';
+import type { DataSourceConfig, DataSourceType } from '@/types/data';
+import { getErrorMessage } from '@/utils/getErrorMessage';
 
-export type DataSourceType = 'mock' | 'rest';
-
-export interface DataSource {
-  id: string;
-  name: string;
-  type: DataSourceType;
-  endpoint: string; // Например 'users' или 'sales' для моковых данных
-  data: any | null;
-  isLoading: boolean;
-  error: string | null;
+export interface DataSource extends DataSourceConfig {
+    data: DataRow[] | null;
+    fields: string[];
+    isLoading: boolean;
+    error: string | null;
+    lastLoadedAt?: number;
 }
 
 interface DataState {
-  sources: DataSource[];
-  addSource: (source: Omit<DataSource, 'data' | 'isLoading' | 'error'>) => void;
-  removeSource: (id: string) => void;
-  loadData: (sourceId: string) => Promise<void>;
-  getDataById: (sourceId: string) => any | null;
+    sources: DataSource[];
+    addSource: (source: DataSourceConfig) => void;
+    removeSource: (id: string) => void;
+    updateSource: (id: string, updates: Partial<DataSourceConfig>) => void;
+    loadData: (sourceId: string) => Promise<void>;
+    loadAllSources: () => Promise<void>;
+    getSourceById: (sourceId: string) => DataSource | undefined;
+    getDataById: (sourceId: string) => DataRow[] | null;
+    getFieldsById: (sourceId: string) => string[];
 }
 
-export const useDataStore = create<DataState>((set, get) => ({
-  // Добавим пару источников по умолчанию для тестирования
-  sources: [
-    { id: 'src-users', name: 'Список пользователей', type: 'mock', endpoint: 'users', data: null, isLoading: false, error: null },
-    { id: 'src-sales', name: 'Продажи по месяцам', type: 'mock', endpoint: 'sales', data: null, isLoading: false, error: null }
-  ],
+const DEFAULT_SOURCES: DataSource[] = [
+    {
+        id: 'src-users',
+        name: 'Список пользователей',
+        type: 'mock',
+        endpoint: 'users',
+        data: null,
+        fields: [],
+        isLoading: false,
+        error: null,
+    },
+    {
+        id: 'src-sales',
+        name: 'Продажи по месяцам',
+        type: 'mock',
+        endpoint: 'sales',
+        data: null,
+        fields: [],
+        isLoading: false,
+        error: null,
+    },
+];
 
-  addSource: (source) => set((state) => ({
-    sources: [...state.sources, { ...source, data: null, isLoading: false, error: null }]
-  })),
+export const useDataStore = create<DataState>()(
+    persist(
+        (set, get) => ({
+            sources: DEFAULT_SOURCES,
 
-  removeSource: (id) => set((state) => ({
-    sources: state.sources.filter(s => s.id !== id)
-  })),
+            addSource: (source) => set((state) => ({
+                sources: [
+                    ...state.sources,
+                    {
+                        ...source,
+                        data: null,
+                        fields: [],
+                        isLoading: false,
+                        error: null,
+                    },
+                ],
+            })),
 
-  loadData: async (sourceId) => {
-    const source = get().sources.find(s => s.id === sourceId);
-    if (!source) return;
+            removeSource: (id) => set((state) => ({
+                sources: state.sources.filter((source) => source.id !== id),
+            })),
 
-    // Устанавливаем статус загрузки
-    set((state) => ({
-      sources: state.sources.map(s => 
-        s.id === sourceId ? { ...s, isLoading: true, error: null } : s
-      )
-    }));
+            updateSource: (id, updates) => set((state) => ({
+                sources: state.sources.map((source) =>
+                    source.id === id
+                        ? {
+                            ...source,
+                            ...updates,
+                            data: null,
+                            fields: [],
+                            error: null,
+                        }
+                        : source
+                ),
+            })),
 
-    try {
-      let fetchedData = null;
-      if (source.type === 'mock') {
-        fetchedData = await dataService.fetchMockData(source.endpoint);
-      }
-      // В будущем здесь можно добавить логику: if (source.type === 'rest') { fetch(source.endpoint)... }
-      
-      set((state) => ({
-        sources: state.sources.map(s => 
-          s.id === sourceId ? { ...s, data: fetchedData, isLoading: false } : s
-        )
-      }));
-    } catch (error: any) {
-      console.error('Error fetching data:', error);
-      set((state) => ({
-        sources: state.sources.map(s => 
-          s.id === sourceId ? { ...s, isLoading: false, error: error.message || 'Ошибка загрузки' } : s
-        )
-      }));
-    }
-  },
+            loadData: async (sourceId) => {
+                const source = get().sources.find((item) => item.id === sourceId);
+                if (!source) {
+                    return;
+                }
 
-  getDataById: (sourceId) => {
-    const source = get().sources.find(s => s.id === sourceId);
-    return source ? source.data : null;
-  }
-}));
+                set((state) => ({
+                    sources: state.sources.map((item) =>
+                        item.id === sourceId
+                            ? { ...item, isLoading: true, error: null }
+                            : item
+                    ),
+                }));
+
+                try {
+                    const rows = await dataService.fetchByType(source.type, source.endpoint);
+                    const validated = validateDataPayload(rows);
+                    if (!validated.success) {
+                        throw new Error(validated.error);
+                    }
+
+                    const fields = getAvailableFields(validated.rows);
+
+                    set((state) => ({
+                        sources: state.sources.map((item) =>
+                            item.id === sourceId
+                                ? {
+                                    ...item,
+                                    data: validated.rows,
+                                    fields,
+                                    isLoading: false,
+                                    error: null,
+                                    lastLoadedAt: Date.now(),
+                                }
+                                : item
+                        ),
+                    }));
+                } catch (error) {
+                    set((state) => ({
+                        sources: state.sources.map((item) =>
+                            item.id === sourceId
+                                ? {
+                                    ...item,
+                                    isLoading: false,
+                                    error: getErrorMessage(error, 'Ошибка загрузки данных'),
+                                    data: null,
+                                    fields: [],
+                                }
+                                : item
+                        ),
+                    }));
+                }
+            },
+
+            loadAllSources: async () => {
+                const { sources, loadData } = get();
+                await Promise.all(sources.map((source) => loadData(source.id)));
+            },
+
+            getSourceById: (sourceId) => get().sources.find((source) => source.id === sourceId),
+
+            getDataById: (sourceId) => {
+                const source = get().sources.find((item) => item.id === sourceId);
+                return source?.data ?? null;
+            },
+
+            getFieldsById: (sourceId) => {
+                const source = get().sources.find((item) => item.id === sourceId);
+                return source?.fields ?? [];
+            },
+        }),
+        {
+            name: 'builder_crm_data_sources',
+            partialize: (state) => ({
+                sources: state.sources.map(({ data: _data, isLoading: _loading, error: _error, fields: _fields, lastLoadedAt: _lastLoadedAt, ...config }) => config),
+            }),
+            merge: (persistedState, currentState) => {
+                const persisted = persistedState as { sources?: DataSourceConfig[] } | undefined;
+                const savedConfigs = persisted?.sources ?? [];
+
+                const mergedConfigs = savedConfigs.length > 0 ? savedConfigs : DEFAULT_SOURCES.map(({ data: _d, fields: _f, isLoading: _l, error: _e, ...config }) => config);
+
+                return {
+                    ...currentState,
+                    sources: mergedConfigs.map((config) => ({
+                        ...config,
+                        data: null,
+                        fields: [],
+                        isLoading: false,
+                        error: null,
+                    })),
+                };
+            },
+        }
+    )
+);
+
+export type { DataSourceType };

@@ -1,5 +1,7 @@
 import addIcon from '@/assets/icons/add.svg';
-import themeIcon from '@/assets/icons/theme-light.svg';
+import pagesIcon from '@/assets/icons/pages.svg';
+import previewIcon from '@/assets/icons/preview.svg';
+import saveIcon from '@/assets/icons/save.svg';
 import settingsIcon from '@/assets/icons/settings.svg';
 import logoIcon from '@/assets/icons/logo.svg';
 import { useNavigate } from 'react-router-dom';
@@ -8,46 +10,75 @@ import styles from './EditorSidebar.module.css';
 interface EditorSidebarProps {
     onToggleLibrary: () => void;
     onTogglePages: () => void;
+    onSave: () => void;
+    onPreview: () => void;
+    isLibraryOpen?: boolean;
+    isPagesOpen?: boolean;
+    saving?: boolean;
 }
 
-export const EditorSidebar = ({ onToggleLibrary, onTogglePages }: EditorSidebarProps) => {
+export const EditorSidebar = ({
+    onToggleLibrary,
+    onTogglePages,
+    onSave,
+    onPreview,
+    isLibraryOpen = false,
+    isPagesOpen = false,
+    saving = false,
+}: EditorSidebarProps) => {
     const navigate = useNavigate();
 
     return (
         <div className={styles.editorSidebar}>
-            <div className={styles.logoSection} onClick={() => navigate('/')}>
-                <img src={logoIcon} alt="Logo" className={styles.logoImage}/>
+            <div className={styles.logoSection} onClick={() => navigate('/create-app')}>
+                <img src={logoIcon} alt="Logo" className={styles.logoImage} />
             </div>
 
-            <div className={styles.upperPanel}>
+            <div className={styles.toolbar}>
                 <button
-                    className={styles.menuButton}
+                    type="button"
+                    className={`${styles.menuButton} ${isLibraryOpen ? styles.menuButtonActive : ''}`}
                     onClick={onToggleLibrary}
                     title="Библиотека компонентов"
                 >
-                    <img src={addIcon} alt="Add" className={styles.iconImage}/>
+                    <img src={addIcon} alt="" className={styles.iconImage} />
                 </button>
+
                 <button
-                    className={styles.menuButton}
+                    type="button"
+                    className={`${styles.menuButton} ${isPagesOpen ? styles.menuButtonActive : ''}`}
                     onClick={onTogglePages}
                     title="Страницы"
-                    style={{marginTop: '15px'}}
                 >
-                    <span style={{ fontSize: '20px' }}>📄</span>
+                    <img src={pagesIcon} alt="" className={styles.iconImageSmall} />
                 </button>
-            </div>
 
-            <div className={styles.bottomPanel}>
-                <button className={styles.menuButton} title="Смена темы">
-                    <img src={themeIcon} alt="Theme" className={styles.iconImage}/>
-                </button>
-                <button 
-                    className={styles.menuButton} 
-                    onClick={() => navigate('/settings')} 
-                    title="Настройки" 
-                    style={{marginTop: '15px'}}
+                <button
+                    type="button"
+                    className={styles.menuButton}
+                    onClick={onPreview}
+                    title="Предпросмотр"
                 >
-                    <img src={settingsIcon} alt="Settings" className={styles.iconImage}/>
+                    <img src={previewIcon} alt="" className={styles.iconImageSmall} />
+                </button>
+
+                <button
+                    type="button"
+                    className={styles.menuButton}
+                    onClick={onSave}
+                    disabled={saving}
+                    title={saving ? 'Сохранение...' : 'Сохранить'}
+                >
+                    <img src={saveIcon} alt="" className={styles.iconImageSmall} />
+                </button>
+
+                <button
+                    type="button"
+                    className={styles.menuButton}
+                    onClick={() => navigate('/settings')}
+                    title="Настройки"
+                >
+                    <img src={settingsIcon} alt="" className={styles.iconImage} />
                 </button>
             </div>
         </div>

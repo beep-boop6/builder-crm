@@ -2,8 +2,11 @@ import {create} from 'zustand';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface UIState {
     isLoading: boolean;
+    theme: ThemeMode;
     toasts: Array<{id: number; message: string; type: ToastType}>;
     modals: {
         createProject: boolean;
@@ -14,6 +17,7 @@ export interface UIState {
     activeModal: string | null;
 
     setLoading: (loading: boolean) => void;
+    toggleTheme: () => void;
     showToast: (message: string, type?: ToastType) => void;
     removeToast: (id: number) => void;
 
@@ -21,10 +25,28 @@ export interface UIState {
     closeModal: (modalName: string) => void;
 }
 
+const getInitialTheme = (): ThemeMode => {
+    if (typeof window === 'undefined') {
+        return 'light';
+    }
+    const stored = localStorage.getItem('builder-crm-theme');
+    return stored === 'dark' ? 'dark' : 'light';
+};
+
+const applyTheme = (theme: ThemeMode) => {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    document.documentElement.dataset.theme = theme;
+};
+
 let toastId = 0;
 
-export const useUIStore = create<UIState>((set) => ({
+applyTheme(getInitialTheme());
+
+export const useUIStore = create<UIState>((set, get) => ({
     isLoading: false,
+    theme: getInitialTheme(),
     toasts: [],
     modals: {
         createProject: false,
@@ -34,6 +56,13 @@ export const useUIStore = create<UIState>((set) => ({
     activeModal: null,
 
     setLoading: (isLoading) => set({isLoading}),
+
+    toggleTheme: () => {
+        const nextTheme: ThemeMode = get().theme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('builder-crm-theme', nextTheme);
+        applyTheme(nextTheme);
+        set({ theme: nextTheme });
+    },
 
     showToast: (message, type = 'info') => {
         const id = ++toastId;

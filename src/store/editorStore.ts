@@ -8,6 +8,7 @@ import { isMockEnabled } from '@/config/env';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 import { Page } from '../types';
 import { generateGuid } from '../utils';
+import { buildComponentFromSnapshot, type ComponentSnapshot } from '@/utils/componentDefaults';
 
 export interface EditorComponent {
     id: string;
@@ -45,6 +46,8 @@ interface EditorState {
     redo: () => void;
     
     addComponent: (component: Omit<EditorComponent, 'id'>) => void;
+    duplicateComponent: (id: string, offset?: { x: number; y: number }) => void;
+    addComponentFromSnapshot: (snapshot: Omit<EditorComponent, 'id' | 'x' | 'y'>, position: { x: number; y: number }) => void;
     updateComponent: (id: string, updates: Partial<EditorComponent>) => void;
     updateComponentProps: (id: string, props: Record<string, any>) => void;
     deleteComponent: (id: string) => void;
@@ -121,6 +124,21 @@ export const useEditorStore = create<EditorState>()(
                  // Транслируем всем через сокет
                  signalrService.sendElementState(newComponent.id, JSON.stringify(newComponent));
              },
+
+            addComponentFromSnapshot: (snapshot, position) => {
+                const component = buildComponentFromSnapshot(snapshot as ComponentSnapshot, position);
+                get().addComponent(component);
+            },
+
+            duplicateComponent: (id, offset = { x: 20, y: 20 }) => {
+                const source = get().components.find((component) => component.id === id);
+                if (!source) {
+                    return;
+                }
+
+                const { id: _id, x, y, ...snapshot } = source;
+                get().addComponentFromSnapshot(snapshot, { x: x + offset.x, y: y + offset.y });
+            },
 
              updateComponent: (id, updates) => {
                  get().saveHistory();

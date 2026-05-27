@@ -6,6 +6,7 @@ import {
     Input,
     InputNumber,
     Modal,
+    Select,
     Space,
     Switch,
     Table,
@@ -14,12 +15,14 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useComponentStore, type ComponentDefinition } from '@/store/componentStore';
+import { COMPONENT_CATEGORIES, getCategoryLabel } from '@/constants/componentCategories';
 import { isMockEnabled } from '@/config/env';
 import styles from './Admin.module.css';
 
 type ComponentFormValues = {
     type: string;
     name: string;
+    category: string;
     defaultWidth: number;
     defaultHeight: number;
 };
@@ -51,6 +54,7 @@ const AdminPage = () => {
         form.setFieldsValue({
             type: '',
             name: '',
+            category: 'custom',
             defaultWidth: 200,
             defaultHeight: 120,
         });
@@ -62,6 +66,7 @@ const AdminPage = () => {
         form.setFieldsValue({
             type: component.type,
             name: component.name,
+            category: component.category,
             defaultWidth: component.defaultWidth,
             defaultHeight: component.defaultHeight,
         });
@@ -89,6 +94,7 @@ const AdminPage = () => {
         if (editingType) {
             updateComponent(editingType, {
                 name: values.name.trim(),
+                category: values.category,
                 defaultWidth: values.defaultWidth,
                 defaultHeight: values.defaultHeight,
             });
@@ -97,6 +103,7 @@ const AdminPage = () => {
             registerComponent({
                 type: normalizedType,
                 name: values.name.trim(),
+                category: values.category,
                 defaultWidth: values.defaultWidth,
                 defaultHeight: values.defaultHeight,
                 defaultProps: {
@@ -121,6 +128,12 @@ const AdminPage = () => {
             title: 'Название',
             dataIndex: 'name',
             key: 'name',
+        },
+        {
+            title: 'Категория',
+            dataIndex: 'category',
+            key: 'category',
+            render: (category: string) => getCategoryLabel(category),
         },
         {
             title: 'Размер',
@@ -229,6 +242,20 @@ const AdminPage = () => {
                         rules={[{ required: true, message: 'Укажите название' }]}
                     >
                         <Input placeholder="Бейдж статуса" />
+                    </Form.Item>
+                    <Form.Item
+                        label="Категория"
+                        name="category"
+                        rules={[{ required: true, message: 'Выберите категорию' }]}
+                    >
+                        <Select
+                            options={COMPONENT_CATEGORIES
+                                .filter((category) => category.id !== 'all')
+                                .map((category) => ({
+                                    value: category.id,
+                                    label: category.label,
+                                }))}
+                        />
                     </Form.Item>
                     <Form.Item
                         label="Ширина по умолчанию"
