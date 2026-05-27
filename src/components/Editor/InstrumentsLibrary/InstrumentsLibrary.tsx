@@ -1,12 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Input, Popconfirm, Select } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import searchIcon from '@/assets/icons/search.svg';
-import { useEditorStore } from '@/store/editorStore';
+import { useEditorStore, type EditorComponent } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { COMPONENT_CATEGORIES, getCategoryLabel } from '@/constants/componentCategories';
+import {
+    buildComponentFromDefinition,
+    buildComponentFromSnapshot,
+    type ComponentSnapshot,
+} from '@/utils/componentDefaults';
+import { ComponentLibraryPreview } from './ComponentLibraryPreview';
+import { computeLibraryPreviewPosition } from './libraryPreviewPosition';
 import styles from './InstrumentsLibrary.module.css';
+
+type HoverPreviewState = {
+    component: EditorComponent;
+    title: string;
+    position: { left: number; top: number };
+};
+
+const PREVIEW_SHOW_DELAY_MS = 1000;
 
 interface Props {
     isOpen: boolean;
@@ -17,7 +33,16 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
     const searchInputRef = useRef<InputRef>(null);
+    const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearPreviewTimeout = () => {
+        if (previewTimeoutRef.current) {
+            clearTimeout(previewTimeoutRef.current);
+            previewTimeoutRef.current = null;
+        }
+    };
 
     const recentComponentTypes = useEditorStore((state) => state.recentComponents);
     const getActiveComponents = useComponentStore((state) => state.getActiveComponents);
@@ -58,6 +83,45 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
         }
     }, [isSearchOpen]);
 
+    useEffect(() => () => clearPreviewTimeout(), []);
+
+    useEffect(() => {
+        if (!isOpen) {
+            clearPreviewTimeout();
+            setHoverPreview(null);
+        }
+    }, [isOpen]);
+
+    const hideHoverPreview = () => {
+        clearPreviewTimeout();
+        setHoverPreview(null);
+    };
+
+    const showHoverPreview = (
+        event: React.MouseEvent<HTMLDivElement>,
+        title: string,
+        type: string,
+        snapshot?: ComponentSnapshot
+    ) => {
+        clearPreviewTimeout();
+
+        const definition = getComponentDefinition(type);
+        const built = snapshot
+            ? buildComponentFromSnapshot(snapshot, { x: 0, y: 0 })
+            : buildComponentFromDefinition(type, definition, { x: 0, y: 0 });
+        const anchorRect = event.currentTarget.getBoundingClientRect();
+        const previewData: HoverPreviewState = {
+            title,
+            component: { id: 'library-preview', ...built },
+            position: computeLibraryPreviewPosition(anchorRect),
+        };
+
+        previewTimeoutRef.current = setTimeout(() => {
+            previewTimeoutRef.current = null;
+            setHoverPreview(previewData);
+        }, PREVIEW_SHOW_DELAY_MS);
+    };
+
     const handleSearchToggle = () => {
         setIsSearchOpen((open) => {
             if (open) {
@@ -72,12 +136,14 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, type: string) => {
         e.dataTransfer.setData('componentType', type);
         e.dataTransfer.effectAllowed = 'copy';
+        hideHoverPreview();
         setTimeout(() => setIsDragging(true), 0);
     };
 
     const handlePresetDragStart = (e: React.DragEvent<HTMLDivElement>, presetId: string) => {
         e.dataTransfer.setData('componentPresetId', presetId);
         e.dataTransfer.effectAllowed = 'copy';
+        hideHoverPreview();
         setTimeout(() => setIsDragging(true), 0);
     };
 
@@ -154,6 +220,8 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, item!.type)}
                                     onDragEnd={handleDragEnd}
+                                    onMouseEnter={(e) => showHoverPreview(e, item!.name, item!.type)}
+                                    onMouseLeave={hideHoverPreview}
                                 >
                                     {renderIcon(item!.type)}
                                 </div>
@@ -178,6 +246,10 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                                         draggable
                                         onDragStart={(e) => handlePresetDragStart(e, preset.id)}
                                         onDragEnd={handleDragEnd}
+                                        onMouseEnter={(e) =>
+                                            showHoverPreview(e, preset.name, preset.snapshot.type, preset.snapshot)
+                                        }
+                                        onMouseLeave={hideHoverPreview}
                                         title={preset.name}
                                     >
                                         {renderIcon(preset.snapshot.type)}
@@ -219,6 +291,8 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, comp.type)}
                                     onDragEnd={handleDragEnd}
+                                    onMouseEnter={(e) => showHoverPreview(e, comp.name, comp.type)}
+                                    onMouseLeave={hideHoverPreview}
                                 >
                                     {renderIcon(comp.type)}
                                 </div>
@@ -234,6 +308,23 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                 </div>
             </div>
             </div>
+            {hoverPreview
+                ? createPortal(
+                    <div
+                        className={styles.previewPortal}
+                        style={{
+                            left: hoverPreview.position.left,
+                            top: hoverPreview.position.top,
+                        }}
+                    >
+                        <ComponentLibraryPreview
+                            title={hoverPreview.title}
+                            component={hoverPreview.component}
+                        />
+                    </div>,
+                    document.body
+                )
+                : null}
         </div>
     );
 };
