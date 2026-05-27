@@ -19,6 +19,7 @@ import {
     TypographySection,
 } from './PropertyFields';
 import { getComponentMinSize } from '@/utils/componentMinSize';
+import { getButtonVariantStyle } from '@/utils/buttonDefaults';
 import styles from './PropertiesPanel.module.css';
 
 export const PropertiesPanel = () => {
@@ -171,20 +172,22 @@ export const PropertiesPanel = () => {
                     <PropertySection title="Стиль">
                         <PropertySelect
                             value={(props.variant as string) || 'primary'}
-                            onChange={(event) => handleUpdateProp('variant', event.target.value)}
+                            onChange={(event) => {
+                                const variant = event.target.value;
+                                const variantStyle = getButtonVariantStyle(variant);
+                                updateComponentProps(selectedComponent.id, {
+                                    ...selectedComponent.props,
+                                    variant,
+                                });
+                                updateComponent(selectedComponent.id, {
+                                    backgroundColor: variantStyle.backgroundColor,
+                                    color: variantStyle.color,
+                                });
+                            }}
                             options={[
-                                { value: 'primary', label: 'Основная' },
+                                { value: 'primary', label: 'Залитая' },
                                 { value: 'default', label: 'Обычная' },
                                 { value: 'dashed', label: 'Пунктирная' },
-                            ]}
-                        />
-                        <PropertySelect
-                            value={(props.size as string) || 'middle'}
-                            onChange={(event) => handleUpdateProp('size', event.target.value)}
-                            options={[
-                                { value: 'small', label: 'Маленькая' },
-                                { value: 'middle', label: 'Средняя' },
-                                { value: 'large', label: 'Большая' },
                             ]}
                         />
                     </PropertySection>
