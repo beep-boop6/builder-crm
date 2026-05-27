@@ -1,0 +1,66 @@
+.header {
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: #ffffff;
+    border-bottom: 1px solid #f0f0f0;
+    box-sizing: border-box;
+    z-index: 50;
+}
+
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.crumbLink {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-family: 'Raleway', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.crumbLink:hover {
+    color: #155DA4;
+}
+
+.crumbCurrent {
+    font-family: 'Raleway', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.themeButton {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 8px;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+}
+
+.themeButton:hover {
+    background: #f5f5f5;
+}
+
+.themeIcon {
+    width: 28px;
+    height: 28px;
+    display: block;
+}

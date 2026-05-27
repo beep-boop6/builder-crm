@@ -3,6 +3,8 @@ import { Rnd } from 'react-rnd';
 import { useCallback, useRef, useEffect } from 'react';
 import { signalrService } from '@/services/signalrService';
 import { useComponentStore } from '@/store/componentStore';
+import { useReusablePresetStore } from '@/store/reusablePresetStore';
+import { buildComponentFromDefinition } from '@/utils/componentDefaults';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
@@ -30,11 +32,14 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
          hideContextMenu,
          contextMenu,
          addComponent,
+         addComponentFromSnapshot,
+         duplicateComponent,
          bringToFront,
          sendToBack,
          projectId,
      } = useEditorStore();
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
+    const getPreset = useReusablePresetStore((state) => state.getPreset);
     
     const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -105,41 +110,34 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
     }, [readonly]);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
-        if (readonly) {
+        if (readonly || !canvasRef.current) {
             return;
         }
         e.preventDefault();
-        const type = e.dataTransfer.getData('componentType');
-        if (!type || !canvasRef.current) return;
 
         const bounds = canvasRef.current.getBoundingClientRect();
-        const x = e.clientX - bounds.left;
-        const y = e.clientY - bounds.top;
-
-        const definition = getComponentDefinition(type);
-        const fallbackProps = {
-            width: 200,
-            height: 100,
-            text: 'Новый элемент',
-            backgroundColor: '#f0f0f0',
-            color: '#333333',
-            borderRadius: 4,
+        const position = {
+            x: e.clientX - bounds.left,
+            y: e.clientY - bounds.top,
         };
 
-        const props = definition
-            ? {
-                width: definition.defaultWidth,
-                height: definition.defaultHeight,
-                text: String(definition.defaultProps.text ?? definition.name),
-                backgroundColor: '#155DA4',
-                color: '#ffffff',
-                borderRadius: 8,
-                props: definition.defaultProps,
+        const presetId = e.dataTransfer.getData('componentPresetId');
+        if (presetId) {
+            const preset = getPreset(presetId);
+            if (preset) {
+                addComponentFromSnapshot(preset.snapshot, position);
             }
-            : fallbackProps;
+            return;
+        }
 
-        addComponent({ type, x, y, ...props });
-    }, [addComponent, getComponentDefinition, readonly]);
+        const type = e.dataTransfer.getData('componentType');
+        if (!type) {
+            return;
+        }
+
+        const definition = getComponentDefinition(type);
+        addComponent(buildComponentFromDefinition(type, definition, position));
+    }, [addComponent, addComponentFromSnapshot, getComponentDefinition, getPreset, readonly]);
 
     useEffect(() => {
         const handleClickOutside = () => hideContextMenu();
@@ -184,10 +182,17 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         }
 
         if (component.type === 'chart') {
+            const chartProps = component.props || {};
+            const fillColor =
+                (chartProps.backgroundColor as string | undefined)
+                ?? component.backgroundColor
+                ?? '#FFFFFF';
+
             return (
-                <ChartWidget 
-                    componentId={component.id} 
-                    props={component.props || {}} 
+                <ChartWidget
+                    componentId={component.id}
+                    props={chartProps}
+                    fillColor={fillColor}
                 />
             );
         }
@@ -245,6 +250,8 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 >
                     <button className={styles.contextMenuItem} onClick={() => { bringToFront(selectedComponentId); hideContextMenu(); }}>На передний план</button>
                     <button className={styles.contextMenuItem} onClick={() => { sendToBack(selectedComponentId); hideContextMenu(); }}>На задний план</button>
+                    <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid #eee' }} />
+                    <button className={styles.contextMenuItem} onClick={() => { duplicateComponent(selectedComponentId); hideContextMenu(); }}>Дублировать</button>
                     <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid #eee' }} />
                     <button className={styles.contextMenuItem} onClick={() => handleDelete(selectedComponentId)} style={{ color: 'red' }}>Удалить компонент</button>
                 </div>

@@ -1,154 +1,196 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDataStore } from '../../../store/dataStore';
 import { useEditorStore } from '../../../store/editorStore';
+import { applyTableMapping } from '@/utils/dataMapping';
+import { validateTableMapping } from '@/utils/dataValidation';
+import type { TableColumnMapping } from '@/types/data';
+import type { ComponentDataProps } from '@/types/data';
 import styles from './TableWidget.module.css';
 
 interface TableWidgetProps {
     componentId: string;
-    props: any;
+    props: ComponentDataProps & Record<string, unknown>;
 }
 
 export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) => {
     const { sources, loadData } = useDataStore();
-    const updateComponentProps = useEditorStore(state => state.updateComponentProps);
-
-    const selectedComponentId = useEditorStore(state => state.selectedComponentId);
+    const updateComponentProps = useEditorStore((state) => state.updateComponentProps);
+    const selectedComponentId = useEditorStore((state) => state.selectedComponentId);
     const isSelected = selectedComponentId === componentId;
 
     const dataSourceId = props.dataSourceId;
-    const source = sources.find(s => s.id === dataSourceId);
+    const source = sources.find((item) => item.id === dataSourceId);
 
     useEffect(() => {
-        if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading) {
+        if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading && !source.error) {
             loadData(dataSourceId);
         }
     }, [dataSourceId, source, loadData]);
 
-    const baseData = source?.data || [];
-    const baseCols = baseData.length > 0
-        ? Object.keys(baseData[0]).map(k => ({ id: k, title: k }))
-        : [{ id: 'col1', title: 'Колонка 1' }, { id: 'col2', title: 'Колонка 2' }];
+    const mapped = useMemo(() => {
+        if (props.customData && props.customColumns) {
+            return {
+                columns: props.customColumns,
+                data: props.customData,
+                validationError: null as string | null,
+            };
+        }
 
-    const defaultRows = baseData.length > 0
-        ? baseData.map((row: any, i: number) => ({ ...row, id: row.id || `row-${i}` }))
-        : [{ id: 'row1', col1: 'Данные', col2: 'Данные' }, { id: 'row2', col1: 'Данные', col2: 'Данные' }];
+        if (!source?.data || source.data.length === 0) {
+            return {
+                columns: [{ id: 'col1', title: 'Колонка 1' }, { id: 'col2', title: 'Колонка 2' }],
+                data: [
+                    { id: 'row1', col1: 'Данные', col2: 'Данные' },
+                    { id: 'row2', col1: 'Данные', col2: 'Данные' },
+                ],
+                validationError: null as string | null,
+            };
+        }
 
-    const columns = props.customColumns || baseCols;
-    const data = props.customData || defaultRows;
+        const mappings = props.columnMappings as TableColumnMapping[] | undefined;
+        const validation = validateTableMapping(source.data, mappings ?? []);
+        if (!validation.valid) {
+            return {
+                columns: [{ id: 'error', title: 'Ошибка' }],
+                data: [{ id: 'error-row', error: validation.error }],
+                validationError: validation.error ?? null,
+            };
+        }
+
+        const applied = applyTableMapping(source.data, mappings);
+        return {
+            ...applied,
+            validationError: null as string | null,
+        };
+    }, [props.customColumns, props.customData, props.columnMappings, source?.data]);
+
+    const { columns, data, validationError } = mapped;
 
     const handleHeaderChange = (colId: string, newTitle: string) => {
-        const updatedCols = columns.map((c: any) => c.id === colId ? { ...c, title: newTitle } : c);
-        updateComponentProps(componentId, { customColumns: updatedCols });
+        const updatedCols = columns.map((column: { id: string; title: string }) =>
+            column.id === colId ? { ...column, title: newTitle } : column
+        );
+        updateComponentProps(componentId, { customColumns: updatedCols, customData: data });
     };
 
     const handleCellChange = (rowId: string, colId: string, newValue: string) => {
-        const updatedRows = data.map((r: any) => r.id === rowId ? { ...r, [colId]: newValue } : r);
+        const updatedRows = data.map((row: Record<string, unknown>) =>
+            row.id === rowId ? { ...row, [colId]: newValue } : row
+        );
         updateComponentProps(componentId, { customData: updatedRows, customColumns: columns });
     };
 
     const addColumn = () => {
         const newColId = `col${Date.now()}`;
         const updatedCols = [...columns, { id: newColId, title: 'Новая' }];
-        const updatedRows = data.map((r: any) => ({ ...r, [newColId]: '' }));
+        const updatedRows = data.map((row: Record<string, unknown>) => ({ ...row, [newColId]: '' }));
         updateComponentProps(componentId, { customColumns: updatedCols, customData: updatedRows });
     };
 
     const addRow = () => {
         const newRowId = `row${Date.now()}`;
-        const newRow: any = { id: newRowId };
-        columns.forEach((c: any) => { newRow[c.id] = ''; });
+        const newRow: Record<string, unknown> = { id: newRowId };
+        columns.forEach((column: { id: string }) => {
+            newRow[column.id] = '';
+        });
         updateComponentProps(componentId, { customData: [...data, newRow], customColumns: columns });
     };
 
-    // Новые функции удаления
     const removeColumn = (colId: string) => {
         if (window.confirm('Вы уверены, что хотите удалить этот столбец?')) {
-            const updatedCols = columns.filter((c: any) => c.id !== colId);
+            const updatedCols = columns.filter((column: { id: string }) => column.id !== colId);
             updateComponentProps(componentId, { customColumns: updatedCols, customData: data });
         }
     };
 
     const removeRow = (rowId: string) => {
         if (window.confirm('Вы уверены, что хотите удалить эту строку?')) {
-            const updatedRows = data.filter((r: any) => r.id !== rowId);
+            const updatedRows = data.filter((row: Record<string, unknown>) => row.id !== rowId);
             updateComponentProps(componentId, { customData: updatedRows, customColumns: columns });
         }
     };
 
-    if (source?.isLoading) return <div>Загрузка данных...</div>;
-    if (source?.error) return <div style={{ color: 'red' }}>Ошибка: {source.error}</div>;
+    if (source?.isLoading) {
+        return <div>Загрузка данных...</div>;
+    }
+
+    if (source?.error) {
+        return <div style={{ color: 'red' }}>Ошибка: {source.error}</div>;
+    }
+
+    if (validationError) {
+        return <div style={{ color: '#d48806' }}>Маппинг: {validationError}</div>;
+    }
 
     const appliedStyles = {
-        ...props.style,
-        width: props.style?.width || '100%',
-        height: props.style?.height || '100%',
+        ...(props.style as Record<string, unknown>),
+        width: (props.style as { width?: string })?.width || '100%',
+        height: (props.style as { height?: string })?.height || '100%',
     };
 
     return (
         <div className={styles.tableWrapper} style={appliedStyles}>
             <table className={styles.table}>
                 <thead>
-                <tr>
-                    {columns.map((col: any) => (
-                        <th key={col.id}>
-                            <input
-                                className={styles.editInput}
-                                value={col.title}
-                                onChange={(e) => handleHeaderChange(col.id, e.target.value)}
-                                placeholder="Заголовок"
-                            />
-                            {/* Крестик удаления столбца */}
-                            {isSelected && (
-                                <button
-                                    className={styles.deleteColBtn}
-                                    onClick={() => removeColumn(col.id)}
-                                    title="Удалить столбец"
-                                >
-                                    ×
-                                </button>
-                            )}
-                        </th>
-                    ))}
-                    {isSelected && (
-                        <th style={{ width: '40px' }}>
-                            <button className={styles.actionButton} onClick={addColumn}>+</button>
-                        </th>
-                    )}
-                </tr>
-                </thead>
-                <tbody>
-                {data.map((row: any) => (
-                    <tr key={row.id}>
-                        {columns.map((col: any) => (
-                            <td key={`${row.id}-${col.id}`}>
+                    <tr>
+                        {columns.map((col: { id: string; title: string }) => (
+                            <th key={col.id}>
                                 <input
                                     className={styles.editInput}
-                                    value={row[col.id] || ''}
-                                    onChange={(e) => handleCellChange(row.id, col.id, e.target.value)}
+                                    value={col.title}
+                                    onChange={(e) => handleHeaderChange(col.id, e.target.value)}
+                                    placeholder="Заголовок"
                                 />
-                            </td>
+                                {isSelected && (
+                                    <button
+                                        className={styles.deleteColBtn}
+                                        onClick={() => removeColumn(col.id)}
+                                        title="Удалить столбец"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </th>
                         ))}
-                        {/* Крестик удаления строки в крайней правой ячейке */}
                         {isSelected && (
-                            <td style={{ width: '40px', padding: 0 }}>
-                                <button
-                                    className={styles.deleteRowBtn}
-                                    onClick={() => removeRow(row.id)}
-                                    title="Удалить строку"
-                                >
-                                    ×
-                                </button>
-                            </td>
+                            <th style={{ width: '40px' }}>
+                                <button className={styles.actionButton} onClick={addColumn}>+</button>
+                            </th>
                         )}
                     </tr>
-                ))}
-                {isSelected && (
-                    <tr className={styles.controlsRow}>
-                        <td colSpan={columns.length + 1}>
-                            <button className={styles.actionButton} onClick={addRow}>+ Добавить строку</button>
-                        </td>
-                    </tr>
-                )}
+                </thead>
+                <tbody>
+                    {data.map((row: Record<string, unknown>) => (
+                        <tr key={String(row.id)}>
+                            {columns.map((col: { id: string }) => (
+                                <td key={`${row.id}-${col.id}`}>
+                                    <input
+                                        className={styles.editInput}
+                                        value={String(row[col.id] ?? '')}
+                                        onChange={(e) => handleCellChange(String(row.id), col.id, e.target.value)}
+                                    />
+                                </td>
+                            ))}
+                            {isSelected && (
+                                <td style={{ width: '40px', padding: 0 }}>
+                                    <button
+                                        className={styles.deleteRowBtn}
+                                        onClick={() => removeRow(String(row.id))}
+                                        title="Удалить строку"
+                                    >
+                                        ×
+                                    </button>
+                                </td>
+                            )}
+                        </tr>
+                    ))}
+                    {isSelected && (
+                        <tr className={styles.controlsRow}>
+                            <td colSpan={columns.length + 1}>
+                                <button className={styles.actionButton} onClick={addRow}>+ Добавить строку</button>
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>

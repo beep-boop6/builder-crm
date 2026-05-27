@@ -16,6 +16,7 @@
     margin-top: 15px;
     cursor: pointer;
     padding: 0 10px;
+    flex-shrink: 0;
 }
 
 .logoImage {
@@ -24,9 +25,14 @@
     display: block;
 }
 
-.upperPanel {
+.toolbar {
     margin-top: 40px;
-    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    flex: 1;
 }
 
 .menuButton {
@@ -40,12 +46,22 @@
     align-items: center;
     cursor: pointer;
     border-radius: 6px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, opacity 0.2s;
     color: #262626;
+    flex-shrink: 0;
 }
 
-.menuButton:hover {
+.menuButton:hover:not(:disabled) {
     background: #f5f5f5;
+}
+
+.menuButton:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.menuButtonActive {
+    background: #e6f2ff;
 }
 
 .iconImage {
@@ -55,11 +71,9 @@
     object-fit: contain;
 }
 
-.bottomPanel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: auto;
-    padding-bottom: 15px;
-    width: 100%;
+.iconImageSmall {
+    width: 26px;
+    height: 26px;
+    display: block;
+    object-fit: contain;
 }

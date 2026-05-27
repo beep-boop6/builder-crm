@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { signalrService } from '@/services/signalrService';
 import { Canvas } from '@/components/Editor/Canvas/Canvas';
 import { EditorSidebar } from '@/components/Editor/Sidebar/EditorSidebar';
+import { EditorHeader } from '@/components/Editor/Header/EditorHeader';
 import { PropertiesPanel } from '@/components/Editor/PropertiesPanel/PropertiesPanel';
 import { InstrumentsLibrary } from '@/components/Editor/InstrumentsLibrary/InstrumentsLibrary';
 import { PagesPanel } from '@/components/Editor/PagesPanel/PagesPanel';
@@ -29,7 +30,7 @@ const ProjectEditorPage = () => {
         saveError,
         clearSaveError,
         updateElementFromSocket,
-        deleteElementFromSocket
+        deleteElementFromSocket,
     } = useEditorStore();
 
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -47,11 +48,10 @@ const ProjectEditorPage = () => {
 
     useEffect(() => {
         if (!currentProject || isPreview) return;
-        const timer = setTimeout(() => saveToProject(), 1000); 
+        const timer = setTimeout(() => saveToProject(), 1000);
         return () => clearTimeout(timer);
     }, [components, currentProject, isPreview, saveToProject]);
 
-    // ИНИЦИАЛИЗАЦИЯ SIGNALR
     useEffect(() => {
         if (isPreview) {
             return;
@@ -85,6 +85,12 @@ const ProjectEditorPage = () => {
         }
     };
 
+    const handlePreview = () => {
+        navigate(`/builder/${projectId}/preview`);
+    };
+
+    const projectName = currentProject?.name ?? 'Без названия';
+
     if (loading && !currentProject) {
         return <div className={styles.editorContainer}>Загрузка проекта...</div>;
     }
@@ -106,65 +112,68 @@ const ProjectEditorPage = () => {
         <div className={styles.editorContainer}>
             {!isPreview && (
                 <EditorSidebar
-                    onToggleLibrary={() => { setIsLibraryOpen(!isLibraryOpen); setIsPagesOpen(false); }}
-                    onTogglePages={() => { setIsPagesOpen(!isPagesOpen); setIsLibraryOpen(false); }}
+                    onToggleLibrary={() => {
+                        setIsLibraryOpen(!isLibraryOpen);
+                        setIsPagesOpen(false);
+                    }}
+                    onTogglePages={() => {
+                        setIsPagesOpen(!isPagesOpen);
+                        setIsLibraryOpen(false);
+                    }}
+                    onSave={handleManualSave}
+                    onPreview={handlePreview}
+                    isLibraryOpen={isLibraryOpen}
+                    isPagesOpen={isPagesOpen}
+                    saving={saving}
                 />
             )}
-            
-            <div className={styles.workspaceWrapper} style={{ display: 'flex', flexDirection: 'column', flex: 1, position: 'relative' }}>
-                {!isPreview && (
-                    <>
-                        <InstrumentsLibrary isOpen={isLibraryOpen} />
-                        <PagesPanel isOpen={isPagesOpen} />
-                    </>
-                )}
-                
-                <div className={styles.topPanel} style={{ 
-                    height: '50px', background: '#fff', borderBottom: '1px solid #e0e0e0',
-                    display: 'flex', alignItems: 'center', padding: '0 20px', gap: '12px', zIndex: 10
-                }}>
-                    {saveError && !isPreview && (
-                        <Alert
-                            type="error"
-                            message={saveError}
-                            showIcon
-                            closable
-                            onClose={clearSaveError}
-                            style={{ flex: 1, padding: '4px 12px' }}
-                        />
-                    )}
-                    {isPreview ? (
-                        <button onClick={() => navigate(`/builder/${projectId}`)} style={btnStyle}>Вернуться в редактор</button>
-                    ) : (
-                        <>
-                            <button onClick={handleManualSave} disabled={saving} style={{...btnStyle, opacity: saving ? 0.6 : 1}}>
-                                {saving ? 'Сохранение...' : 'Сохранить'}
-                            </button>
-                            <button onClick={undo} disabled={past.length === 0} style={{...btnStyle, opacity: past.length === 0 ? 0.5 : 1}}>Отменить</button>
-                            <button onClick={redo} disabled={future.length === 0} style={{...btnStyle, opacity: future.length === 0 ? 0.5 : 1}}>Повторить</button>
-                            <button onClick={() => navigate(`/builder/${projectId}/preview`)} style={btnStyle}>Предпросмотр</button>
-                        </>
-                    )}
-                </div>
 
-                <div className={styles.canvasWrapper} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                    <Canvas components={components} readonly={isPreview}/>
+            <div className={styles.editorMain}>
+                <EditorHeader
+                    projectName={projectName}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={past.length > 0}
+                    canRedo={future.length > 0}
+                    isPreview={isPreview}
+                    onExitPreview={isPreview ? () => navigate(`/builder/${projectId}`) : undefined}
+                />
+
+                <div className={styles.editorContentRow}>
+                    <div className={styles.workspaceBody}>
+                        {!isPreview && (
+                            <>
+                                <InstrumentsLibrary isOpen={isLibraryOpen} />
+                                <PagesPanel isOpen={isPagesOpen} />
+                            </>
+                        )}
+
+                        {saveError && !isPreview && (
+                            <div className={styles.saveErrorBanner}>
+                                <Alert
+                                    type="error"
+                                    message={saveError}
+                                    showIcon
+                                    closable
+                                    onClose={clearSaveError}
+                                />
+                            </div>
+                        )}
+
+                        <div className={styles.canvasWrapper}>
+                            <Canvas components={components} readonly={isPreview} />
+                        </div>
+                    </div>
+
+                    {!isPreview && currentProject && (
+                        <div className={styles.propertiesPanelWrapper}>
+                            <PropertiesPanel />
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {!isPreview && currentProject && (
-                <div className={styles.propertiesPanelWrapper}>
-                    <PropertiesPanel />
-                </div>
-            )}
         </div>
     );
-};
-
-const btnStyle = {
-    padding: '6px 14px', borderRadius: '6px', border: '1px solid #155DA4',
-    background: '#fff', color: '#155DA4', cursor: 'pointer', fontWeight: 500,
-    fontSize: '14px', transition: 'all 0.2s'
 };
 
 export default ProjectEditorPage;

@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 export interface ComponentDefinition {
     type: string;
     name: string;
+    category: string;
     defaultWidth: number;
     defaultHeight: number;
     defaultProps: Record<string, unknown>;
@@ -27,6 +28,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
     table: {
         type: 'table',
         name: 'Таблица',
+        category: 'data',
         defaultWidth: 400,
         defaultHeight: 300,
         defaultProps: {
@@ -42,6 +44,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
     chart: {
         type: 'chart',
         name: 'График',
+        category: 'data',
         defaultWidth: 400,
         defaultHeight: 300,
         defaultProps: {
@@ -49,15 +52,17 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
             data: [],
             xField: 'x',
             yField: 'y',
-            color: '#1890ff',
+            backgroundColor: '#FFFFFF',
+            style: { color: '#1976d2', backgroundColor: '#FFFFFF' },
         },
-        editableFields: ['chartType', 'data', 'xField', 'yField', 'color', 'width', 'height', 'x', 'y'],
+        editableFields: ['chartType', 'data', 'xField', 'yField', 'color', 'backgroundColor', 'width', 'height', 'x', 'y'],
         isBuiltIn: true,
         enabled: true,
     },
     button: {
         type: 'button',
         name: 'Кнопка',
+        category: 'basic',
         defaultWidth: 120,
         defaultHeight: 40,
         defaultProps: {
@@ -72,6 +77,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
     form: {
         type: 'form',
         name: 'Форма',
+        category: 'input',
         defaultWidth: 400,
         defaultHeight: 300,
         defaultProps: {
@@ -88,6 +94,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
     card: {
         type: 'card',
         name: 'Карточка',
+        category: 'layout',
         defaultWidth: 300,
         defaultHeight: 200,
         defaultProps: {
@@ -103,6 +110,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
     filter: {
         type: 'filter',
         name: 'Фильтр',
+        category: 'input',
         defaultWidth: 250,
         defaultHeight: 120,
         defaultProps: {
@@ -125,6 +133,7 @@ const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
         merged[definition.type] = {
             ...(existing ?? {}),
             ...definition,
+            category: definition.category ?? existing?.category ?? 'custom',
             isBuiltIn: existing?.isBuiltIn ?? definition.isBuiltIn ?? false,
             enabled: definition.enabled ?? existing?.enabled ?? true,
         };
@@ -143,6 +152,7 @@ export const useComponentStore = create<ComponentStoreState>()(
                     ...state.library,
                     [def.type]: {
                         ...def,
+                        category: def.category || 'custom',
                         isBuiltIn: false,
                         enabled: def.enabled ?? true,
                     },

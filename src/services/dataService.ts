@@ -1,45 +1,75 @@
-// src/services/dataService.ts
+import { validateDataPayload } from '@/utils/dataValidation';
+import type { DataRow } from '@/utils/dataValidation';
 
-// Типы для моковых данных
 export interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: 'active' | 'inactive';
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    status: 'active' | 'inactive';
 }
 
 export interface SalesData {
-  month: string;
-  amount: number;
+    month: string;
+    amount: number;
 }
 
-// Моковые базы данных
 const MOCK_USERS: UserData[] = [
-  { id: '1', name: 'Иван Иванов', email: 'ivan@example.com', role: 'Admin', status: 'active' },
-  { id: '2', name: 'Петр Петров', email: 'petr@example.com', role: 'Manager', status: 'active' },
-  { id: '3', name: 'Анна Смирнова', email: 'anna@example.com', role: 'Client', status: 'inactive' },
+    { id: '1', name: 'Иван Иванов', email: 'ivan@example.com', role: 'Admin', status: 'active' },
+    { id: '2', name: 'Петр Петров', email: 'petr@example.com', role: 'Manager', status: 'active' },
+    { id: '3', name: 'Анна Смирнова', email: 'anna@example.com', role: 'Client', status: 'inactive' },
 ];
 
 const MOCK_SALES: SalesData[] = [
-  { month: 'Янв', amount: 1200 },
-  { month: 'Фев', amount: 1900 },
-  { month: 'Мар', amount: 1500 },
+    { month: 'Янв', amount: 1200 },
+    { month: 'Фев', amount: 1900 },
+    { month: 'Мар', amount: 1500 },
 ];
 
+const MOCK_REGISTRY: Record<string, DataRow[]> = {
+    users: MOCK_USERS as unknown as DataRow[],
+    sales: MOCK_SALES as unknown as DataRow[],
+};
+
 export const dataService = {
-  // Имитация асинхронного запроса за данными
-  async fetchMockData(endpoint: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (endpoint === 'users') {
-          resolve(MOCK_USERS);
-        } else if (endpoint === 'sales') {
-          resolve(MOCK_SALES);
-        } else {
-          reject(new Error(`Endpoint ${endpoint} not found`));
+    async fetchMockData(endpoint: string): Promise<DataRow[]> {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                const dataset = MOCK_REGISTRY[endpoint];
+                if (!dataset) {
+                    reject(new Error(`Mock-источник «${endpoint}» не найден`));
+                    return;
+                }
+                resolve(dataset);
+            }, 400);
+        });
+    },
+
+    async fetchRestData(url: string): Promise<DataRow[]> {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: не удалось загрузить данные`);
         }
-      }, 600); // Искусственная задержка для имитации сети
-    });
-  }
+
+        const payload = await response.json();
+        const validated = validateDataPayload(payload);
+        if (!validated.success) {
+            throw new Error(validated.error);
+        }
+
+        return validated.rows;
+    },
+
+    async fetchByType(type: 'mock' | 'rest', endpoint: string): Promise<DataRow[]> {
+        if (type === 'mock') {
+            const rows = await dataService.fetchMockData(endpoint);
+            const validated = validateDataPayload(rows);
+            if (!validated.success) {
+                throw new Error(validated.error);
+            }
+            return validated.rows;
+        }
+
+        return dataService.fetchRestData(endpoint);
+    },
 };

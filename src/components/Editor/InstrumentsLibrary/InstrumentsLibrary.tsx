@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Input } from 'antd';
+import { Input, Popconfirm, Select } from 'antd';
 import { useEditorStore } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
+import { useReusablePresetStore } from '@/store/reusablePresetStore';
+import { COMPONENT_CATEGORIES, getCategoryLabel } from '@/constants/componentCategories';
 import styles from './InstrumentsLibrary.module.css';
 
 interface Props {
@@ -11,28 +13,51 @@ interface Props {
 export const InstrumentsLibrary = ({ isOpen }: Props) => {
     const [isDragging, setIsDragging] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
+
     const recentComponentTypes = useEditorStore((state) => state.recentComponents);
     const getActiveComponents = useComponentStore((state) => state.getActiveComponents);
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
+    const presets = useReusablePresetStore((state) => state.presets);
+    const deletePreset = useReusablePresetStore((state) => state.deletePreset);
 
     const availableComponents = getActiveComponents();
 
     const filteredComponents = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
-        if (!query) {
-            return availableComponents;
-        }
 
-        return availableComponents.filter((component) =>
-            component.name.toLowerCase().includes(query) ||
-            component.type.toLowerCase().includes(query)
-        );
-    }, [availableComponents, searchQuery]);
+        return availableComponents.filter((component) => {
+            const matchesCategory = categoryFilter === 'all' || component.category === categoryFilter;
+            const matchesQuery = !query ||
+                component.name.toLowerCase().includes(query) ||
+                component.type.toLowerCase().includes(query) ||
+                getCategoryLabel(component.category).toLowerCase().includes(query);
+
+            return matchesCategory && matchesQuery;
+        });
+    }, [availableComponents, categoryFilter, searchQuery]);
+
+    const filteredPresets = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return presets.filter((preset) => {
+            const matchesCategory = categoryFilter === 'all' || preset.category === categoryFilter;
+            const matchesQuery = !query ||
+                preset.name.toLowerCase().includes(query) ||
+                preset.snapshot.type.toLowerCase().includes(query);
+            return matchesCategory && matchesQuery;
+        });
+    }, [categoryFilter, presets, searchQuery]);
 
     if (!isOpen) return null;
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, type: string) => {
         e.dataTransfer.setData('componentType', type);
+        e.dataTransfer.effectAllowed = 'copy';
+        setTimeout(() => setIsDragging(true), 0);
+    };
+
+    const handlePresetDragStart = (e: React.DragEvent<HTMLDivElement>, presetId: string) => {
+        e.dataTransfer.setData('componentPresetId', presetId);
         e.dataTransfer.effectAllowed = 'copy';
         setTimeout(() => setIsDragging(true), 0);
     };
@@ -60,18 +85,28 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
         .filter((component) => component && component.enabled !== false);
 
     return (
-        <div
-            className={styles.libraryPanel}
-            style={{ opacity: isDragging ? 0.3 : 1 }}
-        >
+        <div className={styles.libraryWrapper}>
+            <div
+                className={styles.libraryPanel}
+                style={{ opacity: isDragging ? 0.3 : 1 }}
+            >
             <div className={styles.header}>
                 <h2 className={styles.headerTitle}>Инструменты</h2>
                 <Input
                     allowClear
-                    placeholder="Поиск компонента"
+                    placeholder="Поиск по названию или типу"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className={styles.searchInput}
+                />
+                <Select
+                    value={categoryFilter}
+                    onChange={setCategoryFilter}
+                    className={styles.categorySelect}
+                    options={COMPONENT_CATEGORIES.map((category) => ({
+                        value: category.id,
+                        label: category.label,
+                    }))}
                 />
             </div>
 
@@ -99,6 +134,48 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
             </div>
 
             <div className={styles.section}>
+                <div className={styles.sectionTitle}>Мои шаблоны</div>
+                <div className={styles.grid}>
+                    {filteredPresets.length > 0 ? (
+                        filteredPresets.map((preset) => (
+                            <div key={`preset-${preset.id}`} className={styles.itemWrapper}>
+                                <div className={styles.presetItem}>
+                                    <div
+                                        className={`${styles.componentBox} ${styles.presetBox}`}
+                                        draggable
+                                        onDragStart={(e) => handlePresetDragStart(e, preset.id)}
+                                        onDragEnd={handleDragEnd}
+                                        title={preset.name}
+                                    >
+                                        {renderIcon(preset.snapshot.type)}
+                                    </div>
+                                    <Popconfirm
+                                        title="Удалить шаблон?"
+                                        description={`«${preset.name}» будет удалён из библиотеки.`}
+                                        okText="Удалить"
+                                        cancelText="Отмена"
+                                        onConfirm={() => deletePreset(preset.id)}
+                                    >
+                                        <button
+                                            type="button"
+                                            className={styles.deletePresetBtn}
+                                            onClick={(event) => event.stopPropagation()}
+                                            title="Удалить шаблон"
+                                        >
+                                            ×
+                                        </button>
+                                    </Popconfirm>
+                                </div>
+                                <span className={styles.itemLabel}>{preset.name}</span>
+                            </div>
+                        ))
+                    ) : (
+                        <div className={styles.emptyPresets}>Пусто</div>
+                    )}
+                </div>
+            </div>
+
+            <div className={styles.section}>
                 <div className={styles.sectionTitle}>Компоненты</div>
                 <div className={styles.grid}>
                     {filteredComponents.length > 0 ? (
@@ -112,13 +189,17 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                                 >
                                     {renderIcon(comp.type)}
                                 </div>
-                                <span className={styles.itemLabel}>{comp.name}</span>
+                                <div className={styles.itemTexts}>
+                                    <span className={styles.itemLabel}>{comp.name}</span>
+                                    <span className={styles.itemCategory}>{getCategoryLabel(comp.category)}</span>
+                                </div>
                             </div>
                         ))
                     ) : (
                         <span className={styles.emptyRecent}>Ничего не найдено</span>
                     )}
                 </div>
+            </div>
             </div>
         </div>
     );

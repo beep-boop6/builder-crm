@@ -1,18 +1,34 @@
-.libraryPanel {
+.libraryWrapper {
     position: absolute;
     left: 0;
-    top: 50px; /* Отступ на высоту верхней панели с кнопками сохранения */
+    top: 0;
     bottom: 0;
-    width: 320px;
-    background: #FFFFFF;
-    border-right: 1px solid #e0e0e0;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    width: 330px;
+    padding: 5px;
+    box-sizing: border-box;
     z-index: 100;
+}
+
+.libraryPanel {
+    width: 100%;
+    height: 100%;
+    background: #FFFFFF;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     font-family: 'Raleway', sans-serif;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     transition: opacity 0.2s ease, transform 0.3s ease;
+    box-sizing: border-box;
+}
+
+.libraryPanel::-webkit-scrollbar {
+    display: none;
 }
 
 .header {
@@ -24,6 +40,48 @@
 
 .searchInput {
     width: 100%;
+}
+
+.categorySelect {
+    width: 100%;
+}
+
+.itemCategory {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+}
+
+.presetBox {
+    border-style: dashed;
+}
+
+.presetItem {
+    position: relative;
+    width: 100%;
+}
+
+.deletePresetBtn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: #ff4d4f;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.deletePresetBtn:hover {
+    background: #cf1322;
 }
 
 .headerTitle {
@@ -55,11 +113,31 @@
     gap: 16px 12px;
 }
 
+.emptyPresets {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 16px;
+    color: #8c8c8c;
+    text-align: center;
+}
+
 .itemWrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
+}
+
+.itemTexts {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(8px / 1.5);
+    width: 100%;
 }
 
 .componentBox {

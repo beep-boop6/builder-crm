@@ -1,7 +1,6 @@
 import {useNavigate} from 'react-router-dom';
 import homeIcon from '@/assets/icons/home_no_active-light.svg';
 import createAppIcon from '@/assets/icons/edit_no_active-light.svg';
-import themeIcon from '@/assets/icons/theme-light.svg';
 import settingsIcon from '@/assets/icons/settings.svg';
 import logoIcon from '@/assets/icons/logo.svg';
 import styles from './SideMenu.module.css';
@@ -19,10 +18,6 @@ export const SideMenu = () => {
 
     const handleSettingsClick = () => {
         navigate('/settings');
-    };
-
-    const handleThemeToggle = () => {
-        console.log('Theme toggle clicked');
     };
 
     return (
@@ -56,21 +51,10 @@ export const SideMenu = () => {
 
             {/* 4. Нижняя панель с кнопками - прижимается к низу */}
             <div className={styles.bottomPanel}>
-                {/* Кнопка смены темы */}
-                <button
-                    className={styles.menuButton}
-                    onClick={handleThemeToggle}
-                    title="Смена темы"
-                >
-                    <img src={themeIcon} alt="Theme" className={styles.iconImage}/>
-                </button>
-
-                {/* 5. Кнопка настроек - в самом низу с отступом 15px от низа */}
                 <button
                     className={styles.menuButton}
                     onClick={handleSettingsClick}
                     title="Настройки"
-                    style={{marginTop: '15px'}}
                 >
                     <img src={settingsIcon} alt="Settings" className={styles.iconImage}/>
                 </button>

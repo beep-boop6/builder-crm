@@ -1,0 +1,26 @@
+.container {
+    max-width: 960px;
+}
+
+.alert {
+    margin-bottom: 20px;
+}
+
+.form {
+    margin-bottom: 24px;
+    padding: 16px;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.tableHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.tableHeader h3 {
+    margin: 0;
+}
