@@ -5,9 +5,11 @@ import { signalrService } from '@/services/signalrService';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { buildComponentFromDefinition } from '@/utils/componentDefaults';
+import { getComponentMinSize } from '@/utils/componentMinSize';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
+import { ContactCardWidget } from '../CanvasComponents/ContactCardWidget';
 
 interface CanvasProps {
     components: EditorComponent[];
@@ -18,9 +20,6 @@ interface DraggableData {
     x: number;
     y: number;
 }
-
-const MIN_WIDTH = 50;
-const MIN_HEIGHT = 30;
 
 export const Canvas = ({ components, readonly = false }: CanvasProps) => {
      const {
@@ -70,9 +69,11 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
     const handleResizeStop = useCallback((id: string, ref: HTMLElement, position: { x: number, y: number }) => {
         const component = components.find((c) => c.id === id);
         if (component) {
-            const newWidth = Math.max(MIN_WIDTH, parseInt(ref.style.width, 10));
-            const newHeight = Math.max(MIN_HEIGHT, parseInt(ref.style.height, 10));
-            
+            const definition = getComponentDefinition(component.type);
+            const { minWidth, minHeight } = getComponentMinSize(component, definition);
+            const newWidth = Math.max(minWidth, parseInt(ref.style.width, 10));
+            const newHeight = Math.max(minHeight, parseInt(ref.style.height, 10));
+
             updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
             
             // Отправляем финальный размер и позицию в базу данных через сокет
@@ -80,7 +81,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 signalrService.saveElementPosition(id, projectId);
             }
         }
-    }, [components, projectId, updateComponent]);
+    }, [components, getComponentDefinition, projectId, updateComponent]);
 
     const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
         e.preventDefault();
@@ -197,6 +198,10 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
             );
         }
 
+        if (component.type === 'card') {
+            return <ContactCardWidget component={component} />;
+        }
+
         return <div style={commonStyles}>{component.text}</div>;
     };
 
@@ -209,7 +214,11 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
             onDragOver={readonly ? undefined : handleDragOver}
             onDrop={readonly ? undefined : handleDrop}
         >
-            {components.map((component) => (
+            {components.map((component) => {
+                const definition = getComponentDefinition(component.type);
+                const { minWidth, minHeight } = getComponentMinSize(component, definition);
+
+                return (
                 <Rnd
                     key={component.id}
                     size={{ width: component.width, height: component.height }}
@@ -230,8 +239,8 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                         zIndex: component.zIndex || 1,
                     }}
                     bounds="parent"
-                    minWidth={MIN_WIDTH}
-                    minHeight={MIN_HEIGHT}
+                    minWidth={minWidth}
+                    minHeight={minHeight}
                     resizeHandleStyles={{
                         bottomRight: { cursor: 'nwse-resize', width: '12px', height: '12px', background: '#1890ff', borderRadius: '50%', border: '2px solid #fff', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }
                     }}
@@ -240,7 +249,8 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 >
                     {renderComponentContent(component)}
                 </Rnd>
-            ))}
+                );
+            })}
 
             {!readonly && contextMenu.visible && selectedComponentId && (
                 <div

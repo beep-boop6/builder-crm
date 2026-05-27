@@ -95,15 +95,38 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
         type: 'card',
         name: 'Карточка',
         category: 'layout',
-        defaultWidth: 300,
-        defaultHeight: 200,
+        defaultWidth: 320,
+        defaultHeight: 400,
         defaultProps: {
-            title: 'Заголовок',
-            content: 'Содержимое карточки',
-            showBorder: true,
-            hoverable: false,
+            fullName: 'Иван Иванов',
+            organization: 'ООО «Пример»',
+            email: 'ivan@example.com',
+            description: 'Менеджер по работе с клиентами',
+            photoUrl: '',
+            photoId: '',
+            phones: [{ id: 'default-phone', number: '+7 (999) 123-45-67' }],
+            textAlign: 'left',
+            coverType: 'gradient',
+            coverColor: '#155DA4',
+            coverImageId: '',
         },
-        editableFields: ['title', 'content', 'showBorder', 'hoverable', 'width', 'height', 'x', 'y', 'backgroundColor'],
+        editableFields: [
+            'fullName',
+            'organization',
+            'email',
+            'description',
+            'photoId',
+            'phones',
+            'textAlign',
+            'coverType',
+            'coverColor',
+            'coverImageId',
+            'width',
+            'height',
+            'x',
+            'y',
+            'backgroundColor',
+        ],
         isBuiltIn: true,
         enabled: true,
     },
@@ -130,11 +153,14 @@ const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
 
     Object.values(library).forEach((definition) => {
         const existing = merged[definition.type];
+        const isBuiltIn = existing?.isBuiltIn ?? definition.isBuiltIn ?? false;
+
         merged[definition.type] = {
             ...(existing ?? {}),
             ...definition,
+            name: isBuiltIn && existing ? existing.name : (definition.name ?? existing?.name ?? definition.type),
             category: definition.category ?? existing?.category ?? 'custom',
-            isBuiltIn: existing?.isBuiltIn ?? definition.isBuiltIn ?? false,
+            isBuiltIn,
             enabled: definition.enabled ?? existing?.enabled ?? true,
         };
     });

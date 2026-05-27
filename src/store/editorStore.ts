@@ -9,6 +9,14 @@ import { getErrorMessage } from '@/utils/getErrorMessage';
 import { Page } from '../types';
 import { generateGuid } from '../utils';
 import { buildComponentFromSnapshot, type ComponentSnapshot } from '@/utils/componentDefaults';
+import { sanitizeEditorComponent } from '@/utils/sanitizeProjectStorage';
+import { clampComponentSize } from '@/utils/componentMinSize';
+import { useComponentStore } from './componentStore';
+
+const applySizeConstraints = (component: EditorComponent): EditorComponent => {
+    const definition = useComponentStore.getState().getComponentDefinition(component.type);
+    return { ...component, ...clampComponentSize(component, definition) };
+};
 
 export interface EditorComponent {
     id: string;
@@ -147,7 +155,7 @@ export const useEditorStore = create<EditorState>()(
                  set((state) => {
                      const newComponents = state.components.map(c => {
                          if (c.id === id) {
-                             const updated = { ...c, ...updates };
+                             const updated = applySizeConstraints({ ...c, ...updates });
                              updatedComponentData = updated;
                              return updated;
                          }
@@ -164,9 +172,11 @@ export const useEditorStore = create<EditorState>()(
              updateComponentProps: (id, props) => {
                  get().saveHistory();
                  set((state) => ({
-                     components: state.components.map(c => 
-                         c.id === id ? { ...c, props: { ...c.props, ...props } } : c
-                     )
+                     components: state.components.map((c) =>
+                         c.id === id
+                             ? applySizeConstraints({ ...c, props: { ...c.props, ...props } })
+                             : c
+                     ),
                  }));
              },
 
@@ -232,8 +242,25 @@ export const useEditorStore = create<EditorState>()(
             hideContextMenu: () => set((state) => ({ contextMenu: { ...state.contextMenu, visible: false } })),
 
             initProject: (projectId, pages, legacyComponents) => {
-                const initialPages = pages?.length > 0 ? pages : [{ id: 'default', title: 'Главная', route: '/', components: legacyComponents || [], order: 1 }];
-                set({ projectId, pages: initialPages, currentPageId: initialPages[0].id, components: initialPages[0].components || [], selectedComponentId: null, past: [], future: [] });
+                const rawPages: Page[] =
+                    pages?.length > 0
+                        ? pages
+                        : [{ id: 'default', title: 'Главная', route: '/', components: legacyComponents || [], order: 1 }];
+
+                const initialPages = rawPages.map((page) => ({
+                    ...page,
+                    components: (page.components ?? []).map((component) => sanitizeEditorComponent(component)),
+                }));
+
+                set({
+                    projectId,
+                    pages: initialPages,
+                    currentPageId: initialPages[0].id,
+                    components: initialPages[0].components || [],
+                    selectedComponentId: null,
+                    past: [],
+                    future: [],
+                });
             },
 
             saveToProject: async () => {

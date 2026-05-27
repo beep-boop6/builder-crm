@@ -3,6 +3,8 @@ import type { EditorComponent } from '@/store/editorStore';
 import { useDataStore } from '@/store/dataStore';
 import type { TableColumnMapping } from '@/types/data';
 import { TableMappingSection } from './DataMappingSection';
+import { useComponentStore } from '@/store/componentStore';
+import { getComponentMinSize } from '@/utils/componentMinSize';
 import {
     AppearanceSection,
     LayoutSections,
@@ -26,6 +28,8 @@ export const TablePropertiesView = ({
     const { sources, loadData } = useDataStore();
     const dataSourceId = component.props?.dataSourceId as string | undefined;
     const source = sources.find((item) => item.id === dataSourceId);
+    const componentDefinition = useComponentStore.getState().getComponentDefinition(component.type);
+    const { minWidth, minHeight } = getComponentMinSize(component, componentDefinition);
 
     useEffect(() => {
         if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading && !source.error) {
@@ -64,6 +68,8 @@ export const TablePropertiesView = ({
             <LayoutSections
                 component={component}
                 onUpdate={(key, value) => onUpdate(key, value)}
+                minWidth={minWidth}
+                minHeight={minHeight}
             />
 
             <AppearanceSection
