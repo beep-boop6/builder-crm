@@ -10,6 +10,7 @@ import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
 import { ContactCardWidget } from '../CanvasComponents/ContactCardWidget';
+import { ButtonWidget } from '../CanvasComponents/ButtonWidget';
 
 interface CanvasProps {
     components: EditorComponent[];
@@ -36,6 +37,9 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
          bringToFront,
          sendToBack,
          projectId,
+         pages,
+         currentPageId,
+         setCurrentPage,
      } = useEditorStore();
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
     const getPreset = useReusablePresetStore((state) => state.getPreset);
@@ -167,9 +171,13 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
 
         if (component.type === 'button') {
             return (
-                <button style={{ ...commonStyles, border: 'none', cursor: 'pointer' }}>
-                    {component.text}
-                </button>
+                <ButtonWidget
+                    component={component}
+                    readonly={readonly}
+                    pages={pages}
+                    currentPageId={currentPageId}
+                    onNavigate={setCurrentPage}
+                />
             );
         }
 

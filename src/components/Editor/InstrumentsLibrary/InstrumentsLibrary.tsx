@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Popconfirm, Select } from 'antd';
+import type { InputRef } from 'antd/es/input';
+import searchIcon from '@/assets/icons/search.svg';
 import { useEditorStore } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
@@ -12,8 +14,10 @@ interface Props {
 
 export const InstrumentsLibrary = ({ isOpen }: Props) => {
     const [isDragging, setIsDragging] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const searchInputRef = useRef<InputRef>(null);
 
     const recentComponentTypes = useEditorStore((state) => state.recentComponents);
     const getActiveComponents = useComponentStore((state) => state.getActiveComponents);
@@ -48,6 +52,21 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
         });
     }, [categoryFilter, presets, searchQuery]);
 
+    useEffect(() => {
+        if (isSearchOpen) {
+            searchInputRef.current?.focus();
+        }
+    }, [isSearchOpen]);
+
+    const handleSearchToggle = () => {
+        setIsSearchOpen((open) => {
+            if (open) {
+                setSearchQuery('');
+            }
+            return !open;
+        });
+    };
+
     if (!isOpen) return null;
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, type: string) => {
@@ -76,7 +95,6 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
         if (type === 'chart') return <div className={styles.mockChart}>📊</div>;
         if (type === 'form') return <div className={styles.mockForm}>📝</div>;
         if (type === 'card') return <div className={styles.mockCard}>🗂️</div>;
-        if (type === 'filter') return <div className={styles.mockFilter}>🔍</div>;
         return <div className={styles.mockCard}>◻</div>;
     };
 
@@ -91,14 +109,29 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                 style={{ opacity: isDragging ? 0.3 : 1 }}
             >
             <div className={styles.header}>
-                <h2 className={styles.headerTitle}>Инструменты</h2>
-                <Input
-                    allowClear
-                    placeholder="Поиск по названию или типу"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    className={styles.searchInput}
-                />
+                <div className={styles.headerTop}>
+                    <h2 className={styles.headerTitle}>Инструменты</h2>
+                    <button
+                        type="button"
+                        className={styles.searchToggle}
+                        onClick={handleSearchToggle}
+                        aria-label={isSearchOpen ? 'Закрыть поиск' : 'Открыть поиск'}
+                        aria-expanded={isSearchOpen}
+                    >
+                        <img src={searchIcon} alt="" className={styles.searchIconImage} />
+                    </button>
+                </div>
+                {isSearchOpen ? (
+                    <Input
+                        ref={searchInputRef}
+                        allowClear
+                        placeholder="Поиск по названию или типу"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        onClear={() => setSearchQuery('')}
+                        className={styles.searchInput}
+                    />
+                ) : null}
                 <Select
                     value={categoryFilter}
                     onChange={setCategoryFilter}
@@ -128,7 +161,7 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                             </div>
                         ))
                     ) : (
-                        <span className={styles.emptyRecent}>Нет недавних</span>
+                        <span className={styles.emptyRecent}>Пусто</span>
                     )}
                 </div>
             </div>

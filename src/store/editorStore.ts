@@ -18,6 +18,11 @@ const applySizeConstraints = (component: EditorComponent): EditorComponent => {
     return { ...component, ...clampComponentSize(component, definition) };
 };
 
+const syncPagesWithCurrentComponents = (pages: Page[], currentPageId: string | null, components: EditorComponent[]) =>
+    pages.map((page) =>
+        page.id === currentPageId ? { ...page, components } : page
+    );
+
 export interface EditorComponent {
     id: string;
     type: string;
@@ -69,6 +74,9 @@ interface EditorState {
     addPage: (title: string, route: string) => void;
     setCurrentPage: (pageId: string) => void;
     deletePage: (pageId: string) => void;
+    deleteComponentOnPage: (pageId: string, componentId: string) => void;
+    navigateToPageComponent: (pageId: string, componentId: string) => void;
+    getSyncedPages: () => Page[];
 
     selectComponent: (id: string | null) => void;
     clearSelection: () => void;
@@ -223,16 +231,101 @@ export const useEditorStore = create<EditorState>()(
                 get().saveToProject();
             },
 
+            getSyncedPages: () => {
+                const state = get();
+                return syncPagesWithCurrentComponents(state.pages, state.currentPageId, state.components);
+            },
+
             deletePage: (pageId) => {
-                set((state) => ({ pages: state.pages.filter(p => p.id !== pageId) }));
-                get().saveToProject();
+                const state = get();
+                if (state.pages.length <= 1) {
+                    return;
+                }
+
+                get().saveHistory();
+                const syncedPages = syncPagesWithCurrentComponents(state.pages, state.currentPageId, state.components);
+                const updatedPages = syncedPages.filter((page) => page.id !== pageId);
+
+                if (updatedPages.length === 0) {
+                    return;
+                }
+
+                const isDeletingCurrent = state.currentPageId === pageId;
+                const nextPage = isDeletingCurrent
+                    ? updatedPages[0]
+                    : updatedPages.find((page) => page.id === state.currentPageId) ?? updatedPages[0];
+
+                set({
+                    pages: updatedPages,
+                    currentPageId: isDeletingCurrent ? nextPage.id : state.currentPageId,
+                    components: isDeletingCurrent ? nextPage.components : state.components,
+                    selectedComponentId: null,
+                    past: [],
+                    future: [],
+                });
+            },
+
+            deleteComponentOnPage: (pageId, componentId) => {
+                get().saveHistory();
+                set((state) => {
+                    const syncedPages = syncPagesWithCurrentComponents(state.pages, state.currentPageId, state.components);
+                    const updatedPages = syncedPages.map((page) =>
+                        page.id === pageId
+                            ? { ...page, components: page.components.filter((c) => c.id !== componentId) }
+                            : page
+                    );
+                    const isCurrentPage = state.currentPageId === pageId;
+                    const nextComponents = isCurrentPage
+                        ? updatedPages.find((page) => page.id === pageId)?.components ?? []
+                        : state.components;
+
+                    return {
+                        pages: updatedPages,
+                        components: nextComponents,
+                        selectedComponentId:
+                            state.selectedComponentId === componentId ? null : state.selectedComponentId,
+                    };
+                });
+                signalrService.deleteElement(componentId);
             },
 
             setCurrentPage: (pageId) => {
                 set((state) => {
-                    const updatedPages = state.pages.map(p => p.id === state.currentPageId ? { ...p, components: state.components } : p);
-                    const targetPage = updatedPages.find(p => p.id === pageId);
-                    return { pages: updatedPages, currentPageId: pageId, components: targetPage?.components || [], past: [], future: [], selectedComponentId: null };
+                    const updatedPages = syncPagesWithCurrentComponents(state.pages, state.currentPageId, state.components);
+                    const targetPage = updatedPages.find((p) => p.id === pageId);
+                    return {
+                        pages: updatedPages,
+                        currentPageId: pageId,
+                        components: targetPage?.components || [],
+                        past: [],
+                        future: [],
+                        selectedComponentId: null,
+                    };
+                });
+            },
+
+            navigateToPageComponent: (pageId, componentId) => {
+                set((state) => {
+                    const updatedPages = syncPagesWithCurrentComponents(state.pages, state.currentPageId, state.components);
+                    const targetPage = updatedPages.find((page) => page.id === pageId);
+
+                    if (!targetPage) {
+                        return state;
+                    }
+
+                    const componentExists = targetPage.components.some((c) => c.id === componentId);
+                    if (!componentExists) {
+                        return state;
+                    }
+
+                    return {
+                        pages: updatedPages,
+                        currentPageId: pageId,
+                        components: targetPage.components,
+                        selectedComponentId: componentId,
+                        past: [],
+                        future: [],
+                    };
                 });
             },
 

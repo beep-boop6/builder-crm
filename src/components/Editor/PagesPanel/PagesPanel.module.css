@@ -1,94 +1,305 @@
-.pagesPanel {
+.pagesPanelWrapper {
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
-    width: 300px;
-    background: #FFFFFF;
-    border-right: 1px solid #e0e0e0;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    width: 330px;
+    padding: 5px;
+    box-sizing: border-box;
     z-index: 100;
+}
+
+.pagesPanel {
+    width: 100%;
+    height: 100%;
+    background: #FFFFFF;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
     font-family: 'Raleway', sans-serif;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 24px 20px 16px;
     border-bottom: 1px solid #eee;
+    flex-shrink: 0;
 }
 
 .title {
     margin: 0;
     font-size: 24px;
     font-weight: 700;
+    color: #000000;
+}
+
+.editToggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.editToggle:hover:not(:disabled) {
+    background: #e6f2ff;
+}
+
+.editToggle:disabled {
+    cursor: default;
+}
+
+.editToggleActive .editToggleIcon {
+    animation: pencilActivate 0.3s ease;
+}
+
+@keyframes pencilActivate {
+    0% {
+        transform: scale(0.75) rotate(-8deg);
+        opacity: 0.5;
+    }
+    60% {
+        transform: scale(1.08) rotate(4deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+.editToggleIcon {
+    width: 24px;
+    height: 24px;
+    display: block;
 }
 
 .pageList {
     flex: 1;
     overflow-y: auto;
-    padding: 12px;
-}
-
-.pageItem {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-bottom: 8px;
-    transition: background 0.2s;
-}
-
-.pageItem:hover {
-    background: #f5f5f5;
-}
-
-.activePage {
-    background: #e6f2ff;
-    border: 1px solid #155DA4;
-}
-
-.pageTitle {
-    font-weight: 600;
-    font-size: 14px;
-}
-
-.pageRoute {
-    font-size: 12px;
-    color: #888;
-}
-
-.deleteBtn {
-    color: #ff4d4f;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 18px;
-}
-
-.addSection {
-    padding: 16px;
-    border-top: 1px solid #eee;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.input {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: transparent;
-    font-size: 14px;
+.pageBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
-.addBtn {
-    padding: 10px;
-    background: #155DA4;
-    color: white;
+.pageBlockMarked {
+    opacity: 0.45;
+}
+
+.pageHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #e6f2ff;
+    border: 1px solid #c5ddf5;
+    border-radius: 8px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.pageHeaderActive {
+    border-color: #155DA4;
+}
+
+.expandButton {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.expandButton:hover {
+    background: rgba(21, 93, 164, 0.08);
+}
+
+.arrowIcon {
+    width: 20px;
+    height: 20px;
+    display: block;
+    /* SVG смотрит влево: 180° — вправо, 270° — вниз */
+    transform: rotate(180deg);
+    transition: transform 0.25s ease;
+}
+
+.arrowExpanded {
+    transform: rotate(270deg);
+}
+
+.pageTitleButton {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #000000;
+    cursor: pointer;
+}
+
+.pageTitleButton:hover {
+    color: #155DA4;
+}
+
+.componentsBox {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.componentRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eeeeee;
+    min-height: 40px;
+}
+
+.componentRow:last-child {
+    border-bottom: none;
+}
+
+.componentRowSelected {
+    background: #f0f7ff;
+}
+
+.componentRowMarked {
+    opacity: 0.45;
+    background: #fff5f5;
+}
+
+.componentLabelButton {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
+    cursor: pointer;
+}
+
+.componentLabelButton:hover:not(:disabled) {
+    color: #155DA4;
+}
+
+.componentLabelButton:disabled {
+    cursor: default;
+}
+
+.componentOrder {
+    color: #888888;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.deleteIconButton {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
     border-radius: 4px;
+}
+
+.deleteIconButton:hover {
+    background: rgba(209, 21, 24, 0.08);
+}
+
+.crossIcon {
+    width: 12px;
+    height: 12px;
+    display: block;
+}
+
+.emptyComponents {
+    padding: 16px;
+    text-align: center;
+    font-size: 14px;
+    color: #8c8c8c;
+}
+
+.footer {
+    padding: 16px 20px 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.input {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.input:focus {
+    outline: none;
+    border-color: #155DA4;
+}
+
+.addBtn,
+.doneBtn {
+    padding: 12px 16px;
+    background: #155DA4;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    font-size: 14px;
+    font-family: inherit;
+    transition: background 0.15s ease;
+}
+
+.addBtn:hover,
+.doneBtn:hover {
+    background: #0f4a85;
 }

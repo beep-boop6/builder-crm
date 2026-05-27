@@ -1,0 +1,12 @@
+.button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0 12px;
+    box-sizing: border-box;
+}
+
+.button:disabled {
+    opacity: 1;
+}

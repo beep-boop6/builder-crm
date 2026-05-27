@@ -35,6 +35,7 @@ export const PropertiesPanel = () => {
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
     const savePreset = useReusablePresetStore((state) => state.savePreset);
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const pages = useEditorStore((state) => state.pages);
     const selectedComponent = components.find((c) => c.id === selectedComponentId);
 
     if (!selectedComponent) {
@@ -143,66 +144,51 @@ export const PropertiesPanel = () => {
             );
         }
 
-        if (selectedComponent.type === 'filter') {
+        if (selectedComponent.type === 'button') {
+            const pageOptions = [
+                { value: '', label: 'Не выбрана' },
+                ...[...pages]
+                    .sort((a, b) => a.order - b.order)
+                    .map((page) => ({ value: page.id, label: page.title })),
+            ];
+
             return (
                 <>
                     <PropertySection title="Контент">
+                        <PropertyTextInput
+                            value={selectedComponent.text}
+                            placeholder="Текст кнопки"
+                            onChange={(event) => handleUpdate('text', event.target.value)}
+                        />
+                    </PropertySection>
+                    <PropertySection title="Действие">
                         <PropertySelect
-                            value={(props.filterType as string) || 'date'}
-                            onChange={(event) => handleUpdateProp('filterType', event.target.value)}
+                            value={(props.targetPageId as string) || ''}
+                            onChange={(event) => handleUpdateProp('targetPageId', event.target.value)}
+                            options={pageOptions}
+                        />
+                    </PropertySection>
+                    <PropertySection title="Стиль">
+                        <PropertySelect
+                            value={(props.variant as string) || 'primary'}
+                            onChange={(event) => handleUpdateProp('variant', event.target.value)}
                             options={[
-                                { value: 'date', label: 'Дата' },
-                                { value: 'select', label: 'Выпадающий список' },
-                                { value: 'text', label: 'Текстовый ввод' },
+                                { value: 'primary', label: 'Основная' },
+                                { value: 'default', label: 'Обычная' },
+                                { value: 'dashed', label: 'Пунктирная' },
                             ]}
                         />
-                        <PropertyTextInput
-                            value={(props.placeholder as string) ?? ''}
-                            placeholder="Подсказка в поле"
-                            onChange={(event) => handleUpdateProp('placeholder', event.target.value)}
+                        <PropertySelect
+                            value={(props.size as string) || 'middle'}
+                            onChange={(event) => handleUpdateProp('size', event.target.value)}
+                            options={[
+                                { value: 'small', label: 'Маленькая' },
+                                { value: 'middle', label: 'Средняя' },
+                                { value: 'large', label: 'Большая' },
+                            ]}
                         />
                     </PropertySection>
-                    <PropertySection title="Поведение">
-                        <label className={styles.checkboxRow}>
-                            <input
-                                type="checkbox"
-                                checked={Boolean(props.multiSelect)}
-                                onChange={(event) => handleUpdateProp('multiSelect', event.target.checked)}
-                            />
-                            <span className={styles.checkboxLabel}>Множественный выбор</span>
-                        </label>
-                    </PropertySection>
                 </>
-            );
-        }
-
-        if (selectedComponent.type === 'button') {
-            return (
-                <PropertySection title="Контент">
-                    <PropertyTextInput
-                        value={selectedComponent.text}
-                        placeholder="Текст кнопки"
-                        onChange={(event) => handleUpdate('text', event.target.value)}
-                    />
-                    <PropertySelect
-                        value={(props.variant as string) || 'primary'}
-                        onChange={(event) => handleUpdateProp('variant', event.target.value)}
-                        options={[
-                            { value: 'primary', label: 'Основная' },
-                            { value: 'default', label: 'Обычная' },
-                            { value: 'dashed', label: 'Пунктирная' },
-                        ]}
-                    />
-                    <PropertySelect
-                        value={(props.size as string) || 'middle'}
-                        onChange={(event) => handleUpdateProp('size', event.target.value)}
-                        options={[
-                            { value: 'small', label: 'Маленькая' },
-                            { value: 'middle', label: 'Средняя' },
-                            { value: 'large', label: 'Большая' },
-                        ]}
-                    />
-                </PropertySection>
             );
         }
 
