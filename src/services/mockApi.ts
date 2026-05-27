@@ -1,5 +1,6 @@
 import { Project, Page } from '../types';
 import { EditorComponent } from '../store/editorStore';
+import { generateGuid } from '../utils';
 
 const STORAGE_KEY = 'builder_crm_projects';
 
@@ -13,7 +14,7 @@ const saveProjects = (projects: Project[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
 };
 
-const generateId = () => `proj_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+const generateId = () => generateGuid();
 
 export const mockApi = {
     // Projects

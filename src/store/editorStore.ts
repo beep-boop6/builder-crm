@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware';
 import { projectService } from '../services/projectService';
 import { signalrService } from '../services/signalrService';
 import { Page } from '../types';
+import { generateGuid } from '../utils';
 
 export interface EditorComponent {
     id: string;
@@ -88,13 +89,13 @@ export const useEditorStore = create<EditorState>()(
              }),
 
              // ЛОКАЛЬНЫЕ ИЗМЕНЕНИЯ (Отправляем на сервер)
-             addComponent: (component) => {
-                 get().saveHistory();
-                 const newComponent: EditorComponent = {
-                     ...component,
-                     id: `comp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-                     zIndex: 1,
-                 };
+            addComponent: (component) => {
+                get().saveHistory();
+                const newComponent: EditorComponent = {
+                    ...component,
+                    id: generateGuid(),
+                    zIndex: 1,
+                };
                  
                  // Обновляем список недавних компонентов (максимум 3, без дублей)
                  const updatedRecent = [
@@ -176,10 +177,10 @@ export const useEditorStore = create<EditorState>()(
                 set((state) => ({ components: state.components.filter(c => c.id !== id) }));
             },
 
-            // Страницы и инициализация (остаются без изменений)
+            // Страницы и инициализация
             addPage: (title, route) => {
                 set((state) => {
-                    const newPage: Page = { id: `page_${Date.now()}`, title, route, components: [], order: state.pages.length + 1 };
+                    const newPage: Page = { id: generateGuid(), title, route, components: [], order: state.pages.length + 1 };
                     return { pages: [...state.pages, newPage] };
                 });
                 get().saveToProject();

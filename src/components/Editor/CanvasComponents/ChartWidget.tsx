@@ -1,102 +1,127 @@
 import React, { useEffect } from 'react';
 import { useDataStore } from '../../../store/dataStore';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+} from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
 import styles from './ChartWidget.module.css';
 
+// Регистрируем нужные модули Chart.js
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend
+);
+
 interface ChartWidgetProps {
-  componentId: string;
-  props: any;
+    componentId: string;
+    props: any;
 }
 
-export const ChartWidget: React.FC<ChartWidgetProps> = ({ props }) => {
-  const { sources, loadData } = useDataStore();
+const DEFAULT_DATA = [
+    { name: 'Янв', value: 400 },
+    { name: 'Фев', value: 300 },
+    { name: 'Мар', value: 550 },
+    { name: 'Апр', value: 200 }
+];
 
-  const dataSourceId = props.dataSourceId;
-  const source = sources.find(s => s.id === dataSourceId);
+export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props }) => {
+    const { sources, loadData } = useDataStore();
 
-  useEffect(() => {
-    if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading) {
-      loadData(dataSourceId);
-    }
-  }, [dataSourceId, source, loadData]);
+    const dataSourceId = props.dataSourceId;
+    const source = sources.find(s => s.id === dataSourceId);
 
-  if (!dataSourceId || dataSourceId === 'none') {
+    const isConfigured = dataSourceId && dataSourceId !== 'none';
+    const isLoading = source?.isLoading;
+    const hasError = !!source?.error;
+
+    useEffect(() => {
+        if (isConfigured && source && !source.data && !isLoading) {
+            loadData(dataSourceId);
+        }
+    }, [isConfigured, dataSourceId, source, isLoading, loadData]);
+
+    const hasRealData = isConfigured && source?.data && source.data.length > 0;
+    const data = hasRealData ? source.data : DEFAULT_DATA;
+
+    const chartType = props.chartType || 'bar';
+    const xAxisKey = props.xAxisKey || (hasRealData ? Object.keys(data[0])[0] : 'name');
+    const yAxisKey = props.yAxisKey || (hasRealData ? Object.keys(data[0])[1] : 'value');
+    const color = props.style?.color || '#1976d2';
+
+    // Подготавливаем данные в формате, понятном для Chart.js
+    const chartData = {
+        labels: data.map((item: any) => item[xAxisKey]),
+        datasets: [
+            {
+                label: yAxisKey || 'Значение',
+                data: data.map((item: any) => item[yAxisKey]),
+                backgroundColor: chartType === 'bar' ? color : 'transparent',
+                borderColor: color,
+                borderWidth: chartType === 'line' ? 3 : 1,
+                borderRadius: chartType === 'bar' ? 4 : 0, // Скругление столбцов
+                pointBackgroundColor: color,
+                pointRadius: 4,
+                tension: 0.3, // Плавность линии
+            },
+        ],
+    };
+
+    // Настройки отображения графика
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false, // Отключаем жесткие пропорции, чтобы график тянулся за рамкой
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top' as const,
+            },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#eee' }
+            },
+            x: {
+                grid: { display: false }
+            }
+        },
+    };
+
     return (
-      <div className={styles.emptyChart} style={props.style}>
-        Выберите источник данных для графика
-      </div>
+        <div id={componentId} className={styles.chartContainer}>
+
+            {/* Оверлей состояний */}
+            {(!isConfigured || isLoading || hasError) && (
+                <div className={styles.overlay}>
+                    {!isConfigured && <span style={{ color: '#555', fontSize: '14px', fontWeight: 500 }}>Выберите данные</span>}
+                    {isLoading && <span style={{ color: '#1976d2', fontSize: '14px', fontWeight: 500 }}>Загрузка...</span>}
+                    {hasError && <span style={{ color: 'red', fontSize: '14px', fontWeight: 500 }}>Ошибка</span>}
+                </div>
+            )}
+
+            {/* Сам график */}
+            <div className={styles.chartInner} style={{ padding: '10px', boxSizing: 'border-box' }}>
+                {chartType === 'line' ? (
+                    <Line data={chartData} options={chartOptions} />
+                ) : (
+                    <Bar data={chartData} options={chartOptions} />
+                )}
+            </div>
+
+        </div>
     );
-  }
-
-  if (source?.isLoading) return <div className={styles.emptyChart}>Загрузка данных...</div>;
-  if (source?.error) return <div className={styles.emptyChart} style={{ color: 'red' }}>Ошибка: {source.error}</div>;
-
-  const data = source?.data || [];
-
-  // Настройки графика из props
-  const chartType = props.chartType || 'bar'; // 'bar' или 'line'
-  // xAxisKey используется для будущего расширения (отображение подписи оси X)
-  const yAxisKey = props.yAxisKey || (data.length > 0 ? Object.keys(data[0])[1] : '');
-  const color = props.style?.color || '#1976d2';
-
-  // Базовые стили для обертки (тянется на 100%)
-  const appliedStyles = {
-    ...props.style,
-    width: props.style?.width || '100%',
-    height: props.style?.height || '100%',
-  };
-
-  // Простой SVG-график как fallback (без recharts)
-  const renderSimpleChart = () => {
-    if (data.length === 0) return <div className={styles.emptyChart}>Нет данных для отображения</div>;
-
-    const values = data.map((d: any) => Number(d[yAxisKey]) || 0);
-    const maxValue = Math.max(...values, 1);
-    const barWidth = 100 / data.length;
-
-    if (chartType === 'line') {
-      const points = values.map((v: number, i: number) => {
-        const x = (i + 0.5) * barWidth;
-        const y = 100 - (v / maxValue) * 80;
-        return `${x},${y}`;
-      }).join(' ');
-
-      return (
-        <svg width="100%" height="100%" viewBox="0 0 100 100">
-          <polyline
-            points={points}
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {values.map((v: number, i: number) => (
-            <circle key={i} cx={(i + 0.5) * barWidth} cy={100 - (v / maxValue) * 80} r="2" fill={color} />
-          ))}
-        </svg>
-      );
-    }
-
-    return (
-      <svg width="100%" height="100%" viewBox="0 0 100 100">
-        {values.map((v: number, i: number) => (
-          <rect
-            key={i}
-            x={i * barWidth + 1}
-            y={100 - (v / maxValue) * 80}
-            width={barWidth - 2}
-            height={(v / maxValue) * 80}
-            fill={color}
-            rx="2"
-          />
-        ))}
-      </svg>
-    );
-  };
-
-  return (
-    <div className={styles.chartWrapper} style={appliedStyles}>
-      {renderSimpleChart()}
-    </div>
-  );
 };
