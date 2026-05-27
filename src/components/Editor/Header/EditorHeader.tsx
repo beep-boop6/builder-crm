@@ -28,9 +28,11 @@ export const EditorHeader = ({
     const navigate = useNavigate();
     const toggleTheme = useUIStore((state) => state.toggleTheme);
 
+    const displayName = projectName || 'Без названия';
+
     const breadcrumbs: Array<{ label: string; path?: string }> = [
         { label: 'Приложения', path: '/create-app' },
-        { label: projectName || 'Панель' },
+        { label: 'Редактор' },
     ];
 
     return (
@@ -66,7 +68,9 @@ export const EditorHeader = ({
                         >
                             <img src={undoArrowIcon} alt="" className={styles.historyIcon} />
                         </button>
-                        <h1 className={styles.projectTitle}>{projectName || 'Без названия'}</h1>
+                        <h1 className={styles.projectTitle} title={displayName}>
+                            {displayName}
+                        </h1>
                         <button
                             type="button"
                             className={styles.historyButton}
@@ -83,7 +87,9 @@ export const EditorHeader = ({
                     </>
                 )}
                 {isPreview && (
-                    <h1 className={styles.projectTitle}>{projectName || 'Без названия'}</h1>
+                    <h1 className={styles.projectTitle} title={displayName}>
+                        {displayName}
+                    </h1>
                 )}
             </div>
 

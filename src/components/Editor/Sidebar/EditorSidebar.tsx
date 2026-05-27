@@ -2,6 +2,7 @@ import addIcon from '@/assets/icons/add.svg';
 import pagesIcon from '@/assets/icons/pages.svg';
 import previewIcon from '@/assets/icons/preview.svg';
 import saveIcon from '@/assets/icons/save.svg';
+import templateIcon from '@/assets/icons/template.svg';
 import settingsIcon from '@/assets/icons/settings.svg';
 import logoIcon from '@/assets/icons/logo.svg';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ interface EditorSidebarProps {
     onToggleLibrary: () => void;
     onTogglePages: () => void;
     onSave: () => void;
+    onSaveAsTemplate: () => void;
     onPreview: () => void;
     isLibraryOpen?: boolean;
     isPagesOpen?: boolean;
@@ -21,6 +23,7 @@ export const EditorSidebar = ({
     onToggleLibrary,
     onTogglePages,
     onSave,
+    onSaveAsTemplate,
     onPreview,
     isLibraryOpen = false,
     isPagesOpen = false,
@@ -70,6 +73,15 @@ export const EditorSidebar = ({
                     title={saving ? 'Сохранение...' : 'Сохранить'}
                 >
                     <img src={saveIcon} alt="" className={styles.iconImageSmall} />
+                </button>
+
+                <button
+                    type="button"
+                    className={styles.menuButton}
+                    onClick={onSaveAsTemplate}
+                    title="Сохранить как шаблон"
+                >
+                    <img src={templateIcon} alt="" className={styles.iconImageSmall} />
                 </button>
 
                 <button

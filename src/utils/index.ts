@@ -1,8 +1,6 @@
 import {useNavigate} from 'react-router-dom';
 import {useCallback} from 'react';
 
-export const testAlias = () => console.log('Alias works!');
-
 export const generateGuid = (): string => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();

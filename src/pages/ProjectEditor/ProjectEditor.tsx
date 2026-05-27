@@ -10,6 +10,9 @@ import { EditorHeader } from '@/components/Editor/Header/EditorHeader';
 import { PropertiesPanel } from '@/components/Editor/PropertiesPanel/PropertiesPanel';
 import { InstrumentsLibrary } from '@/components/Editor/InstrumentsLibrary/InstrumentsLibrary';
 import { PagesPanel } from '@/components/Editor/PagesPanel/PagesPanel';
+import { SaveProjectTemplateModal } from '@/components/Editor/SaveProjectTemplateModal';
+import { useTemplateStore } from '@/store/templateStore';
+import { mergeCurrentPageComponents } from '@/utils/projectSnapshot';
 import styles from './ProjectEditor.module.css';
 
 const ProjectEditorPage = () => {
@@ -31,10 +34,14 @@ const ProjectEditorPage = () => {
         clearSaveError,
         updateElementFromSocket,
         deleteElementFromSocket,
+        pages,
+        currentPageId,
     } = useEditorStore();
+    const saveFromProject = useTemplateStore((state) => state.saveFromProject);
 
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const [isPagesOpen, setIsPagesOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
     useEffect(() => {
         if (projectId) loadProject(projectId);
@@ -89,6 +96,28 @@ const ProjectEditorPage = () => {
         navigate(`/builder/${projectId}/preview`);
     };
 
+    const handleSaveAsTemplate = async (values: { name: string; type: string }) => {
+        if (!currentProject) {
+            return;
+        }
+
+        try {
+            await saveToProject();
+            const snapshotPages = mergeCurrentPageComponents(pages, currentPageId, components);
+            saveFromProject({
+                name: values.name,
+                type: values.type,
+                pages: snapshotPages,
+                navigationType: currentProject.navigationType,
+                sourceProjectId: currentProject.id,
+            });
+            setIsTemplateModalOpen(false);
+            message.success('Шаблон сохранён');
+        } catch {
+            message.error('Не удалось сохранить шаблон');
+        }
+    };
+
     const projectName = currentProject?.name ?? 'Без названия';
 
     if (loading && !currentProject) {
@@ -121,6 +150,7 @@ const ProjectEditorPage = () => {
                         setIsLibraryOpen(false);
                     }}
                     onSave={handleManualSave}
+                    onSaveAsTemplate={() => setIsTemplateModalOpen(true)}
                     onPreview={handlePreview}
                     isLibraryOpen={isLibraryOpen}
                     isPagesOpen={isPagesOpen}
@@ -172,6 +202,14 @@ const ProjectEditorPage = () => {
                     )}
                 </div>
             </div>
+
+            <SaveProjectTemplateModal
+                open={isTemplateModalOpen}
+                defaultName={projectName}
+                defaultType="dashboard"
+                onCancel={() => setIsTemplateModalOpen(false)}
+                onSubmit={handleSaveAsTemplate}
+            />
         </div>
     );
 };

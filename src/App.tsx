@@ -6,10 +6,8 @@ import CreateAppPage from "@/pages/CreateApp/CreateApp";
 import SettingsPage from "@/pages/Settings/Settings";
 import TemplateSelectionPage from "@/pages/TemplateSelection/TemplateSelection";
 import {MainLayout} from "@/layouts/MainLayout";
-import {testAlias} from "@/utils";
 
 export const App = function App() {
-    testAlias()
     return (
         <Routes>
             <Route path="/" element={<MainLayout/>}>

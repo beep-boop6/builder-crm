@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {Alert} from 'antd';
 import CreateAppPopup from '@/components/CreateAppPopup/CreateAppPopup';
 import {useProjectStore} from '@/store/projectStore';
+import arrowIcon from '@/assets/icons/arrow.svg';
 import styles from './CreateApp.module.css';
 import type {Project} from '@/types';
 
@@ -117,7 +118,7 @@ const CreateApp = () => {
                             className={styles.arrowButton}
                             onClick={scrollLeft}
                         >
-                            <img src="/src/assets/icons/arrow.svg" alt="Left" width={20} height={20} />
+                            <img src={arrowIcon} alt="" className={styles.arrowIcon} />
                         </button>
                     )}
                     <div className={styles.carousel} ref={carouselRef}>
@@ -147,7 +148,7 @@ const CreateApp = () => {
                             className={styles.arrowButton}
                             onClick={scrollRight}
                         >
-                            <img src="/src/assets/icons/arrow.svg" alt="Right" width={20} height={20} className={styles.arrowRight} />
+                            <img src={arrowIcon} alt="" className={`${styles.arrowIcon} ${styles.arrowRight}`} />
                         </button>
                     )}
                 </div>
