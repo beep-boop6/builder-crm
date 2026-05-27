@@ -69,8 +69,9 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
             text: 'Кнопка',
             variant: 'primary',
             size: 'middle',
+            targetPageId: '',
         },
-        editableFields: ['text', 'variant', 'size', 'width', 'height', 'x', 'y', 'backgroundColor'],
+        editableFields: ['text', 'targetPageId', 'variant', 'size', 'width', 'height', 'x', 'y', 'backgroundColor'],
         isBuiltIn: true,
         enabled: true,
     },
@@ -130,28 +131,16 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
         isBuiltIn: true,
         enabled: true,
     },
-    filter: {
-        type: 'filter',
-        name: 'Фильтр',
-        category: 'input',
-        defaultWidth: 250,
-        defaultHeight: 120,
-        defaultProps: {
-            filterType: 'date',
-            placeholder: 'Выберите значение',
-            options: [],
-            multiSelect: false,
-        },
-        editableFields: ['filterType', 'placeholder', 'options', 'multiSelect', 'width', 'height', 'x', 'y'],
-        isBuiltIn: true,
-        enabled: true,
-    },
 };
 
 const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
     const merged: Record<string, ComponentDefinition> = { ...DEFAULT_LIBRARY };
 
     Object.values(library).forEach((definition) => {
+        if (definition.type === 'filter') {
+            return;
+        }
+
         const existing = merged[definition.type];
         const isBuiltIn = existing?.isBuiltIn ?? definition.isBuiltIn ?? false;
 
@@ -164,6 +153,8 @@ const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
             enabled: definition.enabled ?? existing?.enabled ?? true,
         };
     });
+
+    delete merged.filter;
 
     return merged;
 };

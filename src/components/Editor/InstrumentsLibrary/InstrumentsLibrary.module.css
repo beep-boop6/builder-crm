@@ -38,6 +38,36 @@
     padding: 24px 20px 16px;
 }
 
+.headerTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.searchToggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+}
+
+.searchToggle:hover {
+    background: #e6f2ff;
+}
+
+.searchIconImage {
+    width: 17px;
+    height: 17px;
+    display: block;
+}
+
 .searchInput {
     width: 100%;
 }
@@ -91,11 +121,6 @@
     color: #000000;
 }
 
-.searchIcon {
-    cursor: pointer;
-    color: #155DA4;
-}
-
 .section {
     padding: 0 20px 24px;
 }
@@ -111,6 +136,18 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px 12px;
+}
+
+.emptyRecent {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 16px;
+    color: #8c8c8c;
+    text-align: center;
 }
 
 .emptyPresets {
