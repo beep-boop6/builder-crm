@@ -17,9 +17,13 @@
 
 .header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 12px;
     padding: 24px 20px 16px;
+}
+
+.searchInput {
+    width: 100%;
 }
 
 .headerTitle {

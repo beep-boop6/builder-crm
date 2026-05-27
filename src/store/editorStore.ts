@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { message } from 'antd';
 import { projectService } from '../services/projectService';
+import { elementService } from '../services/elementService';
 import { signalrService } from '../services/signalrService';
+import { isMockEnabled } from '@/config/env';
+import { getErrorMessage } from '@/utils/getErrorMessage';
 import { Page } from '../types';
 import { generateGuid } from '../utils';
 
@@ -33,6 +37,8 @@ interface EditorState {
     selectedComponentId: string | null;
     contextMenu: { x: number; y: number; visible: boolean; };
     recentComponents: string[];
+    saving: boolean;
+    saveError: string | null;
     
     saveHistory: () => void;
     undo: () => void;
@@ -59,6 +65,7 @@ interface EditorState {
     hideContextMenu: () => void;
     initProject: (projectId: string, pages: Page[], legacyComponents?: EditorComponent[]) => void;
     saveToProject: () => Promise<void>;
+    clearSaveError: () => void;
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -73,6 +80,8 @@ export const useEditorStore = create<EditorState>()(
              selectedComponentId: null,
              contextMenu: { x: 0, y: 0, visible: false },
              recentComponents: [],
+             saving: false,
+             saveError: null,
 
              saveHistory: () => set((state) => ({ past: [...state.past, state.components], future: [] })),
 
@@ -212,14 +221,54 @@ export const useEditorStore = create<EditorState>()(
             saveToProject: async () => {
                 const state = get();
                 if (!state.projectId) return;
-                const updatedPages = state.pages.map(p => p.id === state.currentPageId ? { ...p, components: state.components } : p);
+
+                const updatedPages = state.pages.map((page) =>
+                    page.id === state.currentPageId
+                        ? { ...page, components: state.components }
+                        : page
+                );
+
+                set({ saving: true, saveError: null });
+
                 try {
                     await projectService.update(state.projectId, { pages: updatedPages });
+
+                    if (!isMockEnabled) {
+                        const idRemaps = await elementService.syncProjectElements(
+                            state.projectId,
+                            updatedPages
+                        );
+
+                        if (Object.keys(idRemaps).length > 0) {
+                            const remappedPages = updatedPages.map((page) => ({
+                                ...page,
+                                components: page.components.map((component) => ({
+                                    ...component,
+                                    id: idRemaps[component.id] ?? component.id,
+                                })),
+                            }));
+
+                            const currentPage = remappedPages.find((page) => page.id === state.currentPageId);
+                            set({
+                                pages: remappedPages,
+                                components: currentPage?.components ?? state.components,
+                            });
+                            return;
+                        }
+                    }
+
                     set({ pages: updatedPages });
                 } catch (error) {
-                    console.error('Ошибка сохранения:', error);
+                    const errorMessage = getErrorMessage(error, 'Не удалось сохранить проект');
+                    set({ saveError: errorMessage });
+                    message.error(errorMessage);
+                    throw error;
+                } finally {
+                    set({ saving: false });
                 }
             },
+
+            clearSaveError: () => set({ saveError: null }),
         }),
         { name: 'editor-store' }
     )

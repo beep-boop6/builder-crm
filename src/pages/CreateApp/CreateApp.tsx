@@ -1,5 +1,6 @@
 import {useState, useRef, useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
+import {Alert} from 'antd';
 import CreateAppPopup from '@/components/CreateAppPopup/CreateAppPopup';
 import {useProjectStore} from '@/store/projectStore';
 import styles from './CreateApp.module.css';
@@ -11,7 +12,7 @@ const CreateApp = () => {
     const carouselRef = useRef<HTMLDivElement>(null);
     const [showLeftArrow, setShowLeftArrow] = useState(false);
     const [showRightArrow, setShowRightArrow] = useState(false);
-    const {projects, fetchProjects, setCurrentProject, deleteProject} = useProjectStore();
+    const {projects, fetchProjects, setCurrentProject, deleteProject, error} = useProjectStore();
 
     // Загружаем проекты при монтировании
     useEffect(() => {
@@ -85,6 +86,15 @@ const CreateApp = () => {
 
     return (
         <div className={styles.container}>
+            {error && (
+                <Alert
+                    type="error"
+                    showIcon
+                    message="Ошибка загрузки проектов"
+                    description={error}
+                    style={{ marginBottom: 16 }}
+                />
+            )}
             {/* Block 1: Welcome Section */}
             <div className={styles.welcomeSection}>
                 <h1 className={styles.title}>

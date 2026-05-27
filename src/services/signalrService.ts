@@ -1,4 +1,5 @@
 import * as signalR from "@microsoft/signalr";
+import { backendBaseUrl } from '@/config/env';
 
 class SignalRService {
     private connection: signalR.HubConnection | null = null;
@@ -9,10 +10,8 @@ class SignalRService {
             return;
         }
 
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5203";
-
         this.connection = new signalR.HubConnectionBuilder()
-            .withUrl(`${apiUrl}/crmConstructorHub`, {
+            .withUrl(`${backendBaseUrl}/crmConstructorHub`, {
                 skipNegotiation: false,
                 transport: signalR.HttpTransportType.WebSockets,
             })

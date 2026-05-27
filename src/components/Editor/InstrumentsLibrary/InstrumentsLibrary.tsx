@@ -1,31 +1,39 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Input } from 'antd';
 import { useEditorStore } from '@/store/editorStore';
+import { useComponentStore } from '@/store/componentStore';
 import styles from './InstrumentsLibrary.module.css';
 
 interface Props {
     isOpen: boolean;
 }
 
-// Все доступные компоненты
-const AVAILABLE_COMPONENTS = [
-    { type: 'button', label: 'Кнопка' },
-    { type: 'table', label: 'Таблица' },
-    { type: 'chart', label: 'График' },
-    { type: 'form', label: 'Форма' },
-    { type: 'card', label: 'Карточка' },
-    { type: 'filter', label: 'Фильтр' },
-];
-
 export const InstrumentsLibrary = ({ isOpen }: Props) => {
     const [isDragging, setIsDragging] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const recentComponentTypes = useEditorStore((state) => state.recentComponents);
+    const getActiveComponents = useComponentStore((state) => state.getActiveComponents);
+    const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
+
+    const availableComponents = getActiveComponents();
+
+    const filteredComponents = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) {
+            return availableComponents;
+        }
+
+        return availableComponents.filter((component) =>
+            component.name.toLowerCase().includes(query) ||
+            component.type.toLowerCase().includes(query)
+        );
+    }, [availableComponents, searchQuery]);
 
     if (!isOpen) return null;
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, type: string) => {
         e.dataTransfer.setData('componentType', type);
         e.dataTransfer.effectAllowed = 'copy';
-        // Асинхронно меняем стейт, чтобы иконка, которую тащит пользователь, не стала полупрозрачной
         setTimeout(() => setIsDragging(true), 0);
     };
 
@@ -44,25 +52,27 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
         if (type === 'form') return <div className={styles.mockForm}>📝</div>;
         if (type === 'card') return <div className={styles.mockCard}>🗂️</div>;
         if (type === 'filter') return <div className={styles.mockFilter}>🔍</div>;
-        return null;
+        return <div className={styles.mockCard}>◻</div>;
     };
 
-    // Получаем реальные объекты компонентов на основе сохраненных типов
     const recentItems = recentComponentTypes
-        .map(type => AVAILABLE_COMPONENTS.find(c => c.type === type))
-        .filter(Boolean);
+        .map((type) => getComponentDefinition(type))
+        .filter((component) => component && component.enabled !== false);
 
     return (
-        <div 
+        <div
             className={styles.libraryPanel}
             style={{ opacity: isDragging ? 0.3 : 1 }}
         >
             <div className={styles.header}>
                 <h2 className={styles.headerTitle}>Инструменты</h2>
-                <svg className={styles.searchIcon} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
+                <Input
+                    allowClear
+                    placeholder="Поиск компонента"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className={styles.searchInput}
+                />
             </div>
 
             <div className={styles.section}>
@@ -71,7 +81,7 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                     {recentItems.length > 0 ? (
                         recentItems.map((item) => (
                             <div key={`recent-${item!.type}`} className={styles.itemWrapper}>
-                                <div 
+                                <div
                                     className={styles.componentBox}
                                     draggable
                                     onDragStart={(e) => handleDragStart(e, item!.type)}
@@ -79,7 +89,7 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                                 >
                                     {renderIcon(item!.type)}
                                 </div>
-                                <span className={styles.itemLabel}>{item!.label}</span>
+                                <span className={styles.itemLabel}>{item!.name}</span>
                             </div>
                         ))
                     ) : (
@@ -91,19 +101,23 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
             <div className={styles.section}>
                 <div className={styles.sectionTitle}>Компоненты</div>
                 <div className={styles.grid}>
-                    {AVAILABLE_COMPONENTS.map((comp) => (
-                        <div key={`all-${comp.type}`} className={styles.itemWrapper}>
-                            <div 
-                                className={styles.componentBox}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, comp.type)}
-                                onDragEnd={handleDragEnd}
-                            >
-                                {renderIcon(comp.type)}
+                    {filteredComponents.length > 0 ? (
+                        filteredComponents.map((comp) => (
+                            <div key={`all-${comp.type}`} className={styles.itemWrapper}>
+                                <div
+                                    className={styles.componentBox}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, comp.type)}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    {renderIcon(comp.type)}
+                                </div>
+                                <span className={styles.itemLabel}>{comp.name}</span>
                             </div>
-                            <span className={styles.itemLabel}>{comp.label}</span>
-                        </div>
-                    ))}
+                        ))
+                    ) : (
+                        <span className={styles.emptyRecent}>Ничего не найдено</span>
+                    )}
                 </div>
             </div>
         </div>

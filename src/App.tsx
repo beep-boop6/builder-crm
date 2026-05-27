@@ -21,6 +21,7 @@ export const App = function App() {
             </Route>
             {/* Editor route without MainLayout to avoid double sidebar */}
             <Route path="/builder/:projectId" element={<ProjectEditorPage/>}/>
+            <Route path="/builder/:projectId/preview" element={<ProjectEditorPage/>}/>
             <Route path="*" element={<div>Страница не найдена</div>}/>
         </Routes>
     );

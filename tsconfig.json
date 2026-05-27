@@ -21,13 +21,9 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Alias */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    },
-
-    /* Suppress deprecation warnings */
-    "ignoreDeprecations": "6.0"
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

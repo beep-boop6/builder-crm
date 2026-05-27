@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Alert, message } from 'antd';
 import { useProjectStore } from '@/store/projectStore';
 import { useEditorStore } from '@/store/editorStore';
 import { signalrService } from '@/services/signalrService';
@@ -12,7 +13,10 @@ import styles from './ProjectEditor.module.css';
 
 const ProjectEditorPage = () => {
     const { projectId } = useParams<{ projectId: string }>();
-    const { currentProject, loadProject } = useProjectStore();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const isPreview = location.pathname.endsWith('/preview');
+    const { currentProject, loadProject, loading, error } = useProjectStore();
     const {
         components,
         initProject,
@@ -21,6 +25,9 @@ const ProjectEditorPage = () => {
         redo,
         past,
         future,
+        saving,
+        saveError,
+        clearSaveError,
         updateElementFromSocket,
         deleteElementFromSocket
     } = useEditorStore();
@@ -36,16 +43,20 @@ const ProjectEditorPage = () => {
         if (currentProject) {
             initProject(currentProject.id, currentProject.pages || [], currentProject.components);
         }
-    }, [currentProject?.id, initProject]);
+    }, [currentProject, initProject]);
 
     useEffect(() => {
-        if (!currentProject) return;
+        if (!currentProject || isPreview) return;
         const timer = setTimeout(() => saveToProject(), 1000); 
         return () => clearTimeout(timer);
-    }, [components, currentProject, saveToProject]);
+    }, [components, currentProject, isPreview, saveToProject]);
 
     // ИНИЦИАЛИЗАЦИЯ SIGNALR
     useEffect(() => {
+        if (isPreview) {
+            return;
+        }
+
         const initRealtime = async () => {
             await signalrService.startConnection();
 
@@ -63,39 +74,85 @@ const ProjectEditorPage = () => {
         return () => {
             signalrService.stopConnection();
         };
-    }, [updateElementFromSocket, deleteElementFromSocket]);
+    }, [isPreview, updateElementFromSocket, deleteElementFromSocket]);
 
     const handleManualSave = async () => {
-        await saveToProject();
-        alert('Проект успешно сохранен!');
+        try {
+            await saveToProject();
+            message.success('Проект успешно сохранён');
+        } catch {
+            // Ошибка уже показана в store/interceptor
+        }
     };
+
+    if (loading && !currentProject) {
+        return <div className={styles.editorContainer}>Загрузка проекта...</div>;
+    }
+
+    if (error) {
+        return (
+            <div className={styles.editorContainer} style={{ padding: 24 }}>
+                <Alert
+                    type="error"
+                    message="Не удалось загрузить проект"
+                    description={error}
+                    showIcon
+                />
+            </div>
+        );
+    }
 
     return (
         <div className={styles.editorContainer}>
-            <EditorSidebar
-                onToggleLibrary={() => { setIsLibraryOpen(!isLibraryOpen); setIsPagesOpen(false); }}
-                onTogglePages={() => { setIsPagesOpen(!isPagesOpen); setIsLibraryOpen(false); }}
-            />
+            {!isPreview && (
+                <EditorSidebar
+                    onToggleLibrary={() => { setIsLibraryOpen(!isLibraryOpen); setIsPagesOpen(false); }}
+                    onTogglePages={() => { setIsPagesOpen(!isPagesOpen); setIsLibraryOpen(false); }}
+                />
+            )}
             
             <div className={styles.workspaceWrapper} style={{ display: 'flex', flexDirection: 'column', flex: 1, position: 'relative' }}>
-                <InstrumentsLibrary isOpen={isLibraryOpen} />
-                <PagesPanel isOpen={isPagesOpen} />
+                {!isPreview && (
+                    <>
+                        <InstrumentsLibrary isOpen={isLibraryOpen} />
+                        <PagesPanel isOpen={isPagesOpen} />
+                    </>
+                )}
                 
                 <div className={styles.topPanel} style={{ 
                     height: '50px', background: '#fff', borderBottom: '1px solid #e0e0e0',
                     display: 'flex', alignItems: 'center', padding: '0 20px', gap: '12px', zIndex: 10
                 }}>
-                    <button onClick={handleManualSave} style={btnStyle}>Сохранить</button>
-                    <button onClick={undo} disabled={past.length === 0} style={{...btnStyle, opacity: past.length === 0 ? 0.5 : 1}}>Отменить</button>
-                    <button onClick={redo} disabled={future.length === 0} style={{...btnStyle, opacity: future.length === 0 ? 0.5 : 1}}>Повторить</button>
+                    {saveError && !isPreview && (
+                        <Alert
+                            type="error"
+                            message={saveError}
+                            showIcon
+                            closable
+                            onClose={clearSaveError}
+                            style={{ flex: 1, padding: '4px 12px' }}
+                        />
+                    )}
+                    {isPreview ? (
+                        <button onClick={() => navigate(`/builder/${projectId}`)} style={btnStyle}>Вернуться в редактор</button>
+                    ) : (
+                        <>
+                            <button onClick={handleManualSave} disabled={saving} style={{...btnStyle, opacity: saving ? 0.6 : 1}}>
+                                {saving ? 'Сохранение...' : 'Сохранить'}
+                            </button>
+                            <button onClick={undo} disabled={past.length === 0} style={{...btnStyle, opacity: past.length === 0 ? 0.5 : 1}}>Отменить</button>
+                            <button onClick={redo} disabled={future.length === 0} style={{...btnStyle, opacity: future.length === 0 ? 0.5 : 1}}>Повторить</button>
+                            <button onClick={() => navigate(`/builder/${projectId}/preview`)} style={btnStyle}>Предпросмотр</button>
+                        </>
+                    )}
                 </div>
 
                 <div className={styles.canvasWrapper} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                    <Canvas components={components}/>
+                    <Canvas components={components} readonly={isPreview}/>
                 </div>
             </div>
 
-            {currentProject && (
+            {!isPreview && currentProject && (
                 <div className={styles.propertiesPanelWrapper}>
                     <PropertiesPanel />
                 </div>

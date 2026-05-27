@@ -2,12 +2,14 @@ import { useEditorStore, EditorComponent } from '@/store/editorStore';
 import { Rnd } from 'react-rnd';
 import { useCallback, useRef, useEffect } from 'react';
 import { signalrService } from '@/services/signalrService';
+import { useComponentStore } from '@/store/componentStore';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
 
 interface CanvasProps {
     components: EditorComponent[];
+    readonly?: boolean;
 }
 
 interface DraggableData {
@@ -18,7 +20,7 @@ interface DraggableData {
 const MIN_WIDTH = 50;
 const MIN_HEIGHT = 30;
 
-export const Canvas = ({ components }: CanvasProps) => {
+export const Canvas = ({ components, readonly = false }: CanvasProps) => {
      const {
          updateComponent,
          selectComponent,
@@ -32,6 +34,7 @@ export const Canvas = ({ components }: CanvasProps) => {
          sendToBack,
          projectId,
      } = useEditorStore();
+    const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
     
     const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +60,7 @@ export const Canvas = ({ components }: CanvasProps) => {
                 signalrService.saveElementPosition(id, projectId);
             }
         }
-    }, [components, updateComponent, getCanvasBounds]);
+    }, [components, getCanvasBounds, projectId, updateComponent]);
 
     const handleResizeStop = useCallback((id: string, ref: HTMLElement, position: { x: number, y: number }) => {
         const component = components.find((c) => c.id === id);
@@ -72,7 +75,7 @@ export const Canvas = ({ components }: CanvasProps) => {
                 signalrService.saveElementPosition(id, projectId);
             }
         }
-    }, [components, updateComponent]);
+    }, [components, projectId, updateComponent]);
 
     const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
         e.preventDefault();
@@ -94,11 +97,17 @@ export const Canvas = ({ components }: CanvasProps) => {
     }, [selectComponent, hideContextMenu]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (readonly) {
+            return;
+        }
         e.preventDefault(); 
         e.dataTransfer.dropEffect = 'copy';
-    }, []);
+    }, [readonly]);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
+        if (readonly) {
+            return;
+        }
         e.preventDefault();
         const type = e.dataTransfer.getData('componentType');
         if (!type || !canvasRef.current) return;
@@ -107,16 +116,30 @@ export const Canvas = ({ components }: CanvasProps) => {
         const x = e.clientX - bounds.left;
         const y = e.clientY - bounds.top;
 
-        const defaultProps = {
-            button: { width: 140, height: 45, text: 'Кнопка', backgroundColor: '#155DA4', color: '#ffffff', borderRadius: 8 },
-            table: { width: 400, height: 250, text: 'Таблица данных', backgroundColor: '#ffffff', color: '#000000', borderRadius: 4 },
-            placeholder: { width: 200, height: 100, text: 'Новый элемент', backgroundColor: '#f0f0f0', color: '#333333', borderRadius: 4 }
+        const definition = getComponentDefinition(type);
+        const fallbackProps = {
+            width: 200,
+            height: 100,
+            text: 'Новый элемент',
+            backgroundColor: '#f0f0f0',
+            color: '#333333',
+            borderRadius: 4,
         };
 
-        const props = defaultProps[type as keyof typeof defaultProps] || defaultProps.placeholder;
+        const props = definition
+            ? {
+                width: definition.defaultWidth,
+                height: definition.defaultHeight,
+                text: String(definition.defaultProps.text ?? definition.name),
+                backgroundColor: '#155DA4',
+                color: '#ffffff',
+                borderRadius: 8,
+                props: definition.defaultProps,
+            }
+            : fallbackProps;
 
         addComponent({ type, x, y, ...props });
-    }, [addComponent]);
+    }, [addComponent, getComponentDefinition, readonly]);
 
     useEffect(() => {
         const handleClickOutside = () => hideContextMenu();
@@ -176,25 +199,28 @@ export const Canvas = ({ components }: CanvasProps) => {
         <div 
             ref={canvasRef}
             className={styles.canvas}
-            onClick={handleCanvasClick}
+            onClick={readonly ? undefined : handleCanvasClick}
             onContextMenu={(e) => e.preventDefault()}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+            onDragOver={readonly ? undefined : handleDragOver}
+            onDrop={readonly ? undefined : handleDrop}
         >
             {components.map((component) => (
                 <Rnd
                     key={component.id}
                     size={{ width: component.width, height: component.height }}
                     position={{ x: component.x, y: component.y }}
-                    onDragStop={(_, data) => handleDragStop(component.id, data)}
-                    onResizeStop={(_e, _direction, ref, _delta, position) => handleResizeStop(component.id, ref, position)}
+                    onDragStop={readonly ? undefined : (_, data) => handleDragStop(component.id, data)}
+                    onResizeStop={readonly ? undefined : (_e, _direction, ref, _delta, position) => handleResizeStop(component.id, ref, position)}
                     onClick={(e: React.MouseEvent) => {
+                        if (readonly) {
+                            return;
+                        }
                         e.stopPropagation();
                         selectComponent(component.id);
                     }}
-                    onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, component.id)}
+                    onContextMenu={readonly ? undefined : (e: React.MouseEvent) => handleContextMenu(e, component.id)}
                     style={{
-                        border: selectedComponentId === component.id ? '2px solid #1890ff' : '1px solid transparent',
+                        border: !readonly && selectedComponentId === component.id ? '2px solid #1890ff' : '1px solid transparent',
                         boxSizing: 'border-box',
                         zIndex: component.zIndex || 1,
                     }}
@@ -204,13 +230,14 @@ export const Canvas = ({ components }: CanvasProps) => {
                     resizeHandleStyles={{
                         bottomRight: { cursor: 'nwse-resize', width: '12px', height: '12px', background: '#1890ff', borderRadius: '50%', border: '2px solid #fff', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }
                     }}
-                    enableResizing={{ bottomRight: true }}
+                    disableDragging={readonly}
+                    enableResizing={readonly ? false : { bottomRight: true }}
                 >
                     {renderComponentContent(component)}
                 </Rnd>
             ))}
 
-            {contextMenu.visible && selectedComponentId && (
+            {!readonly && contextMenu.visible && selectedComponentId && (
                 <div
                     className={styles.contextMenu}
                     style={{ position: 'fixed', top: contextMenu.y, left: contextMenu.x, zIndex: 1000 }}

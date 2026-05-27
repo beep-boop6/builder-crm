@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import type {Project} from '../types';
 import {projectService} from '../services/projectService';
+import { getErrorMessage } from '@/utils/getErrorMessage';
 
 interface ProjectState {
     projects: Project[];
@@ -26,7 +27,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
             const projects = await projectService.getAll();
             set({projects, loading: false});
         } catch (error: unknown) {
-            set({error: error instanceof Error ? error.message : 'Unknown error', loading: false});
+            set({error: getErrorMessage(error, 'Не удалось загрузить проекты'), loading: false});
         }
     },
 
@@ -36,7 +37,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
             const project = await projectService.getById(id);
             set({currentProject: project, loading: false});
         } catch (error: unknown) {
-            set({error: error instanceof Error ? error.message : 'Unknown error', loading: false});
+            set({error: getErrorMessage(error, 'Не удалось загрузить проект'), loading: false});
         }
     },
 
@@ -49,7 +50,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
             set(state => ({projects: [...state.projects, newProject], loading: false}));
             return newProject;
         } catch (error: unknown) {
-            set({error: error instanceof Error ? error.message : 'Unknown error', loading: false});
+            set({error: getErrorMessage(error, 'Не удалось создать проект'), loading: false});
             throw error;
         }
     },
@@ -63,7 +64,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
                 loading: false
             }));
         } catch (error: unknown) {
-            set({error: error instanceof Error ? error.message : 'Unknown error', loading: false});
+            set({error: getErrorMessage(error, 'Не удалось удалить проект'), loading: false});
             throw error;
         }
     },

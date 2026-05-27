@@ -1,122 +1,217 @@
 import {create} from 'zustand';
+import { persist } from 'zustand/middleware';
 
-export type ComponentType = 'table' | 'chart' | 'button' | 'form' | 'card' | 'filter';
-
-interface ComponentDefinition {
-    type: ComponentType;
+export interface ComponentDefinition {
+    type: string;
     name: string;
     defaultWidth: number;
     defaultHeight: number;
     defaultProps: Record<string, unknown>;
     editableFields: string[];
+    isBuiltIn?: boolean;
+    enabled?: boolean;
 }
 
 interface ComponentStoreState {
-    library: Record<ComponentType, ComponentDefinition>;
-    componentTemplates: ComponentDefinition[];
-
+    library: Record<string, ComponentDefinition>;
     registerComponent: (def: ComponentDefinition) => void;
-    getComponentDefinition: (type: ComponentType) => ComponentDefinition | undefined;
+    updateComponent: (type: string, updates: Partial<ComponentDefinition>) => void;
+    removeComponent: (type: string) => void;
+    setComponentEnabled: (type: string, enabled: boolean) => void;
+    getComponentDefinition: (type: string) => ComponentDefinition | undefined;
     getAllComponents: () => ComponentDefinition[];
+    getActiveComponents: () => ComponentDefinition[];
 }
 
-export const useComponentStore = create<ComponentStoreState>((set, get) => ({
-    library: {
-        table: {
-            type: 'table',
-            name: 'Таблица',
-            defaultWidth: 400,
-            defaultHeight: 300,
-            defaultProps: {
-                columns: ['Колонка 1', 'Колонка 2', 'Колонка 3'],
-                dataSource: [],
-                pagination: true,
-                rowSelection: false,
-            },
-            editableFields: ['columns', 'dataSource', 'pagination', 'rowSelection', 'width', 'height', 'x', 'y', 'backgroundColor'],
+const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
+    table: {
+        type: 'table',
+        name: 'Таблица',
+        defaultWidth: 400,
+        defaultHeight: 300,
+        defaultProps: {
+            columns: ['Колонка 1', 'Колонка 2', 'Колонка 3'],
+            dataSource: [],
+            pagination: true,
+            rowSelection: false,
         },
-        chart: {
-            type: 'chart',
-            name: 'График',
-            defaultWidth: 400,
-            defaultHeight: 300,
-            defaultProps: {
-                chartType: 'line',
-                data: [],
-                xField: 'x',
-                yField: 'y',
-                color: '#1890ff',
-            },
-            editableFields: ['chartType', 'data', 'xField', 'yField', 'color', 'width', 'height', 'x', 'y'],
-        },
-        button: {
-            type: 'button',
-            name: 'Кнопка',
-            defaultWidth: 120,
-            defaultHeight: 40,
-            defaultProps: {
-                text: 'Кнопка',
-                variant: 'primary',
-                size: 'middle',
-            },
-            editableFields: ['text', 'variant', 'size', 'width', 'height', 'x', 'y', 'backgroundColor'],
-        },
-        form: {
-            type: 'form',
-            name: 'Форма',
-            defaultWidth: 400,
-            defaultHeight: 300,
-            defaultProps: {
-                fields: [
-                    {name: 'field1', label: 'Поле 1', type: 'text', required: false},
-                    {name: 'field2', label: 'Поле 2', type: 'text', required: false},
-                ],
-                layout: 'vertical',
-            },
-            editableFields: ['fields', 'layout', 'width', 'height', 'x', 'y'],
-        },
-        card: {
-            type: 'card',
-            name: 'Карточка',
-            defaultWidth: 300,
-            defaultHeight: 200,
-            defaultProps: {
-                title: 'Заголовок',
-                content: 'Содержимое карточки',
-                showBorder: true,
-                hoverable: false,
-            },
-            editableFields: ['title', 'content', 'showBorder', 'hoverable', 'width', 'height', 'x', 'y', 'backgroundColor'],
-        },
-        filter: {
-            type: 'filter',
-            name: 'Фильтр',
-            defaultWidth: 250,
-            defaultHeight: 120,
-            defaultProps: {
-                filterType: 'date',
-                placeholder: 'Выберите значение',
-                options: [],
-                multiSelect: false,
-            },
-            editableFields: ['filterType', 'placeholder', 'options', 'multiSelect', 'width', 'height', 'x', 'y'],
-        },
+        editableFields: ['columns', 'dataSource', 'pagination', 'rowSelection', 'width', 'height', 'x', 'y', 'backgroundColor'],
+        isBuiltIn: true,
+        enabled: true,
     },
-
-    componentTemplates: [],
-
-    registerComponent: (def) => set(state => ({
-        library: {...state.library, [def.type]: def},
-        componentTemplates: [...state.componentTemplates, def],
-    })),
-
-    getComponentDefinition: (type) => {
-        const state = get();
-        return state.library[type];
+    chart: {
+        type: 'chart',
+        name: 'График',
+        defaultWidth: 400,
+        defaultHeight: 300,
+        defaultProps: {
+            chartType: 'line',
+            data: [],
+            xField: 'x',
+            yField: 'y',
+            color: '#1890ff',
+        },
+        editableFields: ['chartType', 'data', 'xField', 'yField', 'color', 'width', 'height', 'x', 'y'],
+        isBuiltIn: true,
+        enabled: true,
     },
-
-    getAllComponents: () => {
-        const state = get();
-        return Object.values(state.library);
+    button: {
+        type: 'button',
+        name: 'Кнопка',
+        defaultWidth: 120,
+        defaultHeight: 40,
+        defaultProps: {
+            text: 'Кнопка',
+            variant: 'primary',
+            size: 'middle',
+        },
+        editableFields: ['text', 'variant', 'size', 'width', 'height', 'x', 'y', 'backgroundColor'],
+        isBuiltIn: true,
+        enabled: true,
     },
-}));
+    form: {
+        type: 'form',
+        name: 'Форма',
+        defaultWidth: 400,
+        defaultHeight: 300,
+        defaultProps: {
+            fields: [
+                {name: 'field1', label: 'Поле 1', type: 'text', required: false},
+                {name: 'field2', label: 'Поле 2', type: 'text', required: false},
+            ],
+            layout: 'vertical',
+        },
+        editableFields: ['fields', 'layout', 'width', 'height', 'x', 'y'],
+        isBuiltIn: true,
+        enabled: true,
+    },
+    card: {
+        type: 'card',
+        name: 'Карточка',
+        defaultWidth: 300,
+        defaultHeight: 200,
+        defaultProps: {
+            title: 'Заголовок',
+            content: 'Содержимое карточки',
+            showBorder: true,
+            hoverable: false,
+        },
+        editableFields: ['title', 'content', 'showBorder', 'hoverable', 'width', 'height', 'x', 'y', 'backgroundColor'],
+        isBuiltIn: true,
+        enabled: true,
+    },
+    filter: {
+        type: 'filter',
+        name: 'Фильтр',
+        defaultWidth: 250,
+        defaultHeight: 120,
+        defaultProps: {
+            filterType: 'date',
+            placeholder: 'Выберите значение',
+            options: [],
+            multiSelect: false,
+        },
+        editableFields: ['filterType', 'placeholder', 'options', 'multiSelect', 'width', 'height', 'x', 'y'],
+        isBuiltIn: true,
+        enabled: true,
+    },
+};
+
+const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
+    const merged: Record<string, ComponentDefinition> = { ...DEFAULT_LIBRARY };
+
+    Object.values(library).forEach((definition) => {
+        const existing = merged[definition.type];
+        merged[definition.type] = {
+            ...(existing ?? {}),
+            ...definition,
+            isBuiltIn: existing?.isBuiltIn ?? definition.isBuiltIn ?? false,
+            enabled: definition.enabled ?? existing?.enabled ?? true,
+        };
+    });
+
+    return merged;
+};
+
+export const useComponentStore = create<ComponentStoreState>()(
+    persist(
+        (set, get) => ({
+            library: DEFAULT_LIBRARY,
+
+            registerComponent: (def) => set((state) => ({
+                library: mergeWithDefaults({
+                    ...state.library,
+                    [def.type]: {
+                        ...def,
+                        isBuiltIn: false,
+                        enabled: def.enabled ?? true,
+                    },
+                }),
+            })),
+
+            updateComponent: (type, updates) => set((state) => {
+                const current = state.library[type];
+                if (!current) {
+                    return state;
+                }
+
+                return {
+                    library: {
+                        ...state.library,
+                        [type]: {
+                            ...current,
+                            ...updates,
+                            type,
+                        },
+                    },
+                };
+            }),
+
+            removeComponent: (type) => set((state) => {
+                const current = state.library[type];
+                if (!current || current.isBuiltIn) {
+                    return state;
+                }
+
+                const nextLibrary = { ...state.library };
+                delete nextLibrary[type];
+                return { library: mergeWithDefaults(nextLibrary) };
+            }),
+
+            setComponentEnabled: (type, enabled) => set((state) => {
+                const current = state.library[type];
+                if (!current) {
+                    return state;
+                }
+
+                return {
+                    library: {
+                        ...state.library,
+                        [type]: {
+                            ...current,
+                            enabled,
+                        },
+                    },
+                };
+            }),
+
+            getComponentDefinition: (type) => get().library[type],
+
+            getAllComponents: () => Object.values(get().library),
+
+            getActiveComponents: () => Object.values(get().library).filter((item) => item.enabled !== false),
+        }),
+        {
+            name: 'builder_crm_component_library',
+            merge: (persistedState, currentState) => {
+                const persisted = persistedState as Partial<ComponentStoreState> | undefined;
+                return {
+                    ...currentState,
+                    library: mergeWithDefaults(persisted?.library ?? currentState.library),
+                };
+            },
+        }
+    )
+);
+
+export type ComponentType = string;
