@@ -1,30 +1,22 @@
-import {mockApi} from './mockApi';
-import {Project, Page} from '../types';
+import { mockApi } from './mockApi';
+import { Project, Page } from '../types';
 import { isMockEnabled } from '@/config/env';
 import { requestWithFallback } from './api';
 import { elementService } from './elementService';
-import { projectMetaService } from './projectMetaService';
-import { generateGuid } from '@/utils';
+import { pageService } from './pageService';
+import { syncProjectPages } from './projectSyncService';
+import { fromBackendNavigation, toBackendNavigation } from '@/utils/backendNavigation';
 
 type RawProject = Partial<Project> & {
     Id?: string;
     Name?: string;
     NavigationType?: unknown;
-    Elements?: unknown[];
-    elements?: unknown[];
-};
-
-const mapNavigationType = (value: unknown): 'sidebar' | 'topbar' => {
-    if (value === 'topbar' || value === 1 || value === 'Topbar') {
-        return 'topbar';
-    }
-    return 'sidebar';
 };
 
 const mapProject = (input: RawProject): Project => ({
     id: String(input.id ?? input.Id ?? ''),
     name: String(input.name ?? input.Name ?? 'Без названия'),
-    navigationType: mapNavigationType(input.navigationType ?? input.NavigationType),
+    navigationType: fromBackendNavigation(input.navigationType ?? input.NavigationType),
     pages: input.pages ?? [],
     components: input.components ?? [],
     updatedAt: input.updatedAt,
@@ -45,85 +37,47 @@ const unwrapProjectList = (payload: unknown): Project[] => {
     return projects.map((project) => mapProject(project as RawProject));
 };
 
-const extractElementsFromProject = (input: RawProject) => {
-    const rawElements = input.elements ?? input.Elements ?? [];
-    return rawElements.map((element) => {
-        const item = element as Record<string, unknown>;
-        return {
-            id: String(item.id ?? item.Id ?? ''),
-            json: (item.json ?? item.Json ?? null) as string | null,
-        };
-    });
+const applyComponentIdRemaps = (pages: Page[], idRemaps: Record<string, string>): Page[] => {
+    if (Object.keys(idRemaps).length === 0) {
+        return pages;
+    }
+
+    return pages.map((page) => ({
+        ...page,
+        components: page.components.map((component) => ({
+            ...component,
+            id: idRemaps[component.id] ?? component.id,
+        })),
+    }));
 };
 
-const buildPagesFromElements = (
-    projectId: string,
-    navigationType: 'sidebar' | 'topbar',
-    elements: Array<{ id: string; json: string | null }>
-): { navigationType: 'sidebar' | 'topbar'; pages: Page[] } => {
-    const parsedComponents = elementService.parseComponentsFromElements(elements);
-    const meta = projectMetaService.get(projectId);
+const loadProjectPages = async (project: Project): Promise<Page[]> => {
+    let pages = await pageService.getByProject(project.id);
 
-    if (meta?.pages?.length) {
-        const pages = meta.pages.map((page) => ({
+    if (pages.length === 0) {
+        const defaultPage = await pageService.create(project.id, {
+            title: 'Главная',
+            route: '/',
+        });
+        pages = [defaultPage];
+    }
+
+    const pagesWithComponents: Page[] = [];
+
+    for (let index = 0; index < pages.length; index += 1) {
+        const page = pages[index];
+        const elements = await elementService.getByPageId(page.id);
+        const components = elementService.parseComponentsFromElements(elements, page.id);
+
+        pagesWithComponents.push({
             ...page,
-            components: parsedComponents
-                .filter((component) => (component.pageId ?? 'default') === page.id)
-                .map(({ pageId: _pageId, ...component }) => component),
-        }));
-
-        return {
-            navigationType: meta.navigationType ?? navigationType,
-            pages,
-        };
+            components,
+            order: index + 1,
+        });
     }
 
-    const defaultPage: Page = {
-        id: 'default',
-        title: 'Главная',
-        route: '/',
-        components: parsedComponents.map(({ pageId: _pageId, ...component }) => component),
-        order: 1,
-    };
-
-    return {
-        navigationType,
-        pages: [defaultPage],
-    };
+    return pagesWithComponents;
 };
-
-const enrichProject = async (project: Project, rawProject?: RawProject): Promise<Project> => {
-    if (isMockEnabled) {
-        return project;
-    }
-
-    const embeddedElements = rawProject ? extractElementsFromProject(rawProject) : [];
-    const elements = embeddedElements.length > 0
-        ? embeddedElements
-        : await elementService.getByProject(project.id);
-
-    const { navigationType, pages } = buildPagesFromElements(
-        project.id,
-        project.navigationType,
-        elements
-    );
-
-    return {
-        ...project,
-        navigationType,
-        pages,
-    };
-};
-
-const createDefaultMeta = (): Page[] => ([
-    {
-        id: generateGuid(),
-        title: 'Главная',
-        route: '/',
-        components: [],
-        order: 1,
-    },
-]);
 
 export const projectService = {
     getAll: (): Promise<Project[]> => {
@@ -150,7 +104,12 @@ export const projectService = {
         });
 
         const project = mapProject(rawProject);
-        return enrichProject(project, rawProject);
+        const pages = await loadProjectPages(project);
+
+        return {
+            ...project,
+            pages,
+        };
     },
 
     create: async (data: { name: string; navigationType: 'sidebar' | 'topbar' }): Promise<Project> => {
@@ -158,10 +117,13 @@ export const projectService = {
             return mockApi.createProject(data);
         }
 
-        const created = await requestWithFallback<RawProject, { name: string }>({
+        const created = await requestWithFallback<RawProject, { name: string; navigationType: string }>({
             method: 'POST',
             paths: ['/projects'],
-            data: { name: data.name },
+            data: {
+                name: data.name,
+                navigationType: toBackendNavigation(data.navigationType),
+            },
         });
 
         const project = mapProject({
@@ -169,15 +131,14 @@ export const projectService = {
             navigationType: data.navigationType,
         });
 
-        const pages = createDefaultMeta();
-        projectMetaService.set(project.id, {
-            navigationType: data.navigationType,
-            pages: pages.map(({ components: _components, ...page }) => page),
+        const defaultPage = await pageService.create(project.id, {
+            title: 'Главная',
+            route: '/',
         });
 
         return {
             ...project,
-            pages,
+            pages: [{ ...defaultPage, components: [], order: 1 }],
         };
     },
 
@@ -188,16 +149,30 @@ export const projectService = {
 
         const current = await projectService.getById(id);
         const nextPages = data.pages ?? current.pages;
+        const nextName = data.name ?? current.name;
 
-        projectMetaService.set(id, {
-            navigationType: data.navigationType ?? current.navigationType,
-            pages: nextPages.map(({ components: _components, ...page }) => page),
-        });
+        if (nextName !== current.name) {
+            await requestWithFallback<unknown, { id: string; json: string }>({
+                method: 'PUT',
+                paths: [`/projects/${id}/set-name`],
+                data: {
+                    id,
+                    json: nextName,
+                },
+            });
+        }
+
+        const { pages: syncedPages } = await syncProjectPages(id, nextPages);
+
+        const componentIdRemaps = await elementService.syncProjectElements(syncedPages);
+        const finalPages = applyComponentIdRemaps(syncedPages, componentIdRemaps);
 
         return {
             ...current,
             ...data,
-            pages: nextPages,
+            name: nextName,
+            navigationType: data.navigationType ?? current.navigationType,
+            pages: finalPages,
         };
     },
 
@@ -211,7 +186,5 @@ export const projectService = {
             method: 'DELETE',
             paths: [`/projects/${id}`],
         });
-
-        projectMetaService.delete(id);
     },
 };

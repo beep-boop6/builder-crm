@@ -26,6 +26,7 @@ export const PagesPanel = ({ isOpen }: Props) => {
         selectedComponentId,
         setCurrentPage,
         addPage,
+        updatePage,
         deletePage,
         deleteComponentOnPage,
         navigateToPageComponent,
@@ -38,6 +39,7 @@ export const PagesPanel = ({ isOpen }: Props) => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [expandedPageIds, setExpandedPageIds] = useState<string[]>([]);
     const [newTitle, setNewTitle] = useState('');
+    const [editedTitles, setEditedTitles] = useState<Record<string, string>>({});
     const [pendingPageIds, setPendingPageIds] = useState<string[]>([]);
     const [pendingComponents, setPendingComponents] = useState<PendingComponentDeletion[]>([]);
 
@@ -113,6 +115,15 @@ export const PagesPanel = ({ isOpen }: Props) => {
     };
 
     const handleDone = async () => {
+        Object.entries(editedTitles).forEach(([pageId, rawTitle]) => {
+            const trimmedTitle = rawTitle.trim();
+            if (!trimmedTitle) {
+                return;
+            }
+            const route = `/${trimmedTitle.toLowerCase().replace(/\s+/g, '-')}`;
+            updatePage(pageId, { title: trimmedTitle, route });
+        });
+
         const pagesToDelete = [...pendingPageIds];
         const componentsToDelete = pendingComponents.filter(
             (item) => !pagesToDelete.includes(item.pageId)
@@ -128,6 +139,7 @@ export const PagesPanel = ({ isOpen }: Props) => {
 
         setPendingPageIds([]);
         setPendingComponents([]);
+        setEditedTitles({});
         setIsEditMode(false);
 
         try {
@@ -149,6 +161,10 @@ export const PagesPanel = ({ isOpen }: Props) => {
         } catch {
             // handled in store
         }
+    };
+
+    const handleTitleDraftChange = (pageId: string, title: string) => {
+        setEditedTitles((prev) => ({ ...prev, [pageId]: title }));
     };
 
     return (
@@ -209,13 +225,23 @@ export const PagesPanel = ({ isOpen }: Props) => {
                                         />
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        className={styles.pageTitleButton}
-                                        onClick={() => handlePageNavigate(page.id)}
-                                    >
-                                        {page.title}
-                                    </button>
+                                    {isEditMode ? (
+                                        <input
+                                            value={editedTitles[page.id] ?? page.title}
+                                            onChange={(event) => handleTitleDraftChange(page.id, event.target.value)}
+                                            onClick={(event) => event.stopPropagation()}
+                                            className={styles.input}
+                                            aria-label="Название страницы"
+                                        />
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className={styles.pageTitleButton}
+                                            onClick={() => handlePageNavigate(page.id)}
+                                        >
+                                            {page.title}
+                                        </button>
+                                    )}
 
                                     {isEditMode && displayPages.length > 1 ? (
                                         <Popconfirm

@@ -54,12 +54,6 @@ const ProjectEditorPage = () => {
     }, [currentProject, initProject]);
 
     useEffect(() => {
-        if (!currentProject || isPreview) return;
-        const timer = setTimeout(() => saveToProject(), 1000);
-        return () => clearTimeout(timer);
-    }, [components, currentProject, isPreview, saveToProject]);
-
-    useEffect(() => {
         if (isPreview) {
             return;
         }
