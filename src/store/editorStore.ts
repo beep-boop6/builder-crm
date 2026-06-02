@@ -2,9 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { message } from 'antd';
 import { projectService } from '../services/projectService';
-import { elementService } from '../services/elementService';
 import { signalrService } from '../services/signalrService';
-import { isMockEnabled } from '@/config/env';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 import { Page } from '../types';
 import { generateGuid } from '../utils';
@@ -22,6 +20,43 @@ const syncPagesWithCurrentComponents = (pages: Page[], currentPageId: string | n
     pages.map((page) =>
         page.id === currentPageId ? { ...page, components } : page
     );
+
+const SAVE_DEBOUNCE_MS = 1000;
+
+let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let saveInFlight = false;
+let savePending = false;
+
+const clearScheduledSave = () => {
+    if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer);
+        saveDebounceTimer = null;
+    }
+};
+
+const scheduleSaveToProject = (get: () => EditorState) => {
+    if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer);
+    }
+    saveDebounceTimer = setTimeout(() => {
+        saveDebounceTimer = null;
+        void get().saveToProject();
+    }, SAVE_DEBOUNCE_MS);
+};
+
+const serializeForSync = (component: EditorComponent, pageId: string | null) =>
+    JSON.stringify({ ...component, pageId: pageId ?? undefined });
+
+const emitComponentChange = (component: EditorComponent, get: () => EditorState) => {
+    void signalrService.sendElementState(
+        component.id,
+        serializeForSync(component, get().currentPageId)
+    );
+    scheduleSaveToProject(get);
+};
+
+const nextZIndex = (components: EditorComponent[]) =>
+    Math.max(1, ...components.map((component) => component.zIndex ?? 1)) + 1;
 
 export interface EditorComponent {
     id: string;
@@ -61,7 +96,7 @@ interface EditorState {
     addComponent: (component: Omit<EditorComponent, 'id'>) => void;
     duplicateComponent: (id: string, offset?: { x: number; y: number }) => void;
     addComponentFromSnapshot: (snapshot: Omit<EditorComponent, 'id' | 'x' | 'y'>, position: { x: number; y: number }) => void;
-    updateComponent: (id: string, updates: Partial<EditorComponent>) => void;
+    updateComponent: (id: string, updates: Partial<EditorComponent>, options?: { skipHistory?: boolean }) => void;
     updateComponentProps: (id: string, props: Record<string, any>) => void;
     deleteComponent: (id: string) => void;
     bringToFront: (id: string) => void;
@@ -72,6 +107,7 @@ interface EditorState {
     deleteElementFromSocket: (id: string) => void;
     
     addPage: (title: string, route: string) => void;
+    updatePage: (pageId: string, updates: Partial<Pick<Page, 'title' | 'route'>>) => void;
     setCurrentPage: (pageId: string) => void;
     deletePage: (pageId: string) => void;
     deleteComponentOnPage: (pageId: string, componentId: string) => void;
@@ -83,6 +119,7 @@ interface EditorState {
     showContextMenu: (x: number, y: number) => void;
     hideContextMenu: () => void;
     initProject: (projectId: string, pages: Page[], legacyComponents?: EditorComponent[]) => void;
+    scheduleSaveToProject: () => void;
     saveToProject: () => Promise<void>;
     clearSaveError: () => void;
 }
@@ -104,41 +141,70 @@ export const useEditorStore = create<EditorState>()(
 
              saveHistory: () => set((state) => ({ past: [...state.past, state.components], future: [] })),
 
-             undo: () => set((state) => {
-                 if (state.past.length === 0) return state;
+             undo: () => {
+                 const state = get();
+                 if (state.past.length === 0) {
+                     return;
+                 }
                  const previous = state.past[state.past.length - 1];
-                 return { past: state.past.slice(0, -1), future: [state.components, ...state.future], components: previous, selectedComponentId: null };
-             }),
+                 const updatedPages = syncPagesWithCurrentComponents(state.pages, state.currentPageId, previous);
+                 set({
+                     past: state.past.slice(0, -1),
+                     future: [state.components, ...state.future],
+                     components: previous,
+                     pages: updatedPages,
+                     selectedComponentId: null,
+                 });
+                 scheduleSaveToProject(get);
+             },
 
-             redo: () => set((state) => {
-                 if (state.future.length === 0) return state;
+             redo: () => {
+                 const state = get();
+                 if (state.future.length === 0) {
+                     return;
+                 }
                  const next = state.future[0];
-                 return { past: [...state.past, state.components], future: state.future.slice(1), components: next, selectedComponentId: null };
-             }),
+                 const updatedPages = syncPagesWithCurrentComponents(state.pages, state.currentPageId, next);
+                 set({
+                     past: [...state.past, state.components],
+                     future: state.future.slice(1),
+                     components: next,
+                     pages: updatedPages,
+                     selectedComponentId: null,
+                 });
+                 scheduleSaveToProject(get);
+             },
 
              // ЛОКАЛЬНЫЕ ИЗМЕНЕНИЯ (Отправляем на сервер)
             addComponent: (component) => {
                 get().saveHistory();
-                const newComponent: EditorComponent = {
+                const currentComponents = get().components;
+                const newComponent: EditorComponent = applySizeConstraints({
                     ...component,
                     id: generateGuid(),
-                    zIndex: 1,
-                };
-                 
-                 // Обновляем список недавних компонентов (максимум 3, без дублей)
+                    zIndex: nextZIndex(currentComponents),
+                });
+
                  const updatedRecent = [
-                     component.type, 
+                     component.type,
                      ...get().recentComponents.filter(type => type !== component.type)
                  ].slice(0, 3);
-                 
-                 set((state) => ({ 
-                     components: [...state.components, newComponent], 
-                     selectedComponentId: newComponent.id,
-                     recentComponents: updatedRecent
-                 }));
-                 
-                 // Транслируем всем через сокет
-                 signalrService.sendElementState(newComponent.id, JSON.stringify(newComponent));
+
+                 set((state) => {
+                     const nextComponents = [...state.components, newComponent];
+                     return {
+                         components: nextComponents,
+                         pages: syncPagesWithCurrentComponents(state.pages, state.currentPageId, nextComponents),
+                         selectedComponentId: newComponent.id,
+                         recentComponents: updatedRecent,
+                     };
+                 });
+
+                 void signalrService.sendElementState(
+                     newComponent.id,
+                     serializeForSync(newComponent, get().currentPageId)
+                 );
+                 scheduleSaveToProject(get);
              },
 
             addComponentFromSnapshot: (snapshot, position) => {
@@ -156,10 +222,12 @@ export const useEditorStore = create<EditorState>()(
                 get().addComponentFromSnapshot(snapshot, { x: x + offset.x, y: y + offset.y });
             },
 
-             updateComponent: (id, updates) => {
-                 get().saveHistory();
+             updateComponent: (id, updates, options?: { skipHistory?: boolean }) => {
+                 if (!options?.skipHistory) {
+                     get().saveHistory();
+                 }
                  let updatedComponentData: EditorComponent | null = null;
-                 
+
                  set((state) => {
                      const newComponents = state.components.map(c => {
                          if (c.id === id) {
@@ -169,37 +237,66 @@ export const useEditorStore = create<EditorState>()(
                          }
                          return c;
                      });
-                     return { components: newComponents };
+                     return {
+                         components: newComponents,
+                         pages: syncPagesWithCurrentComponents(state.pages, state.currentPageId, newComponents),
+                     };
                  });
 
                  if (updatedComponentData) {
-                     signalrService.sendElementState(id, JSON.stringify(updatedComponentData));
+                     emitComponentChange(updatedComponentData, get);
                  }
              },
 
              updateComponentProps: (id, props) => {
                  get().saveHistory();
-                 set((state) => ({
-                     components: state.components.map((c) =>
-                         c.id === id
-                             ? applySizeConstraints({ ...c, props: { ...c.props, ...props } })
-                             : c
-                     ),
-                 }));
+                 let updatedComponentData: EditorComponent | null = null;
+
+                 set((state) => {
+                     const newComponents = state.components.map((c) => {
+                         if (c.id !== id) {
+                             return c;
+                         }
+                         const updated = applySizeConstraints({ ...c, props: { ...c.props, ...props } });
+                         updatedComponentData = updated;
+                         return updated;
+                     });
+                     return {
+                         components: newComponents,
+                         pages: syncPagesWithCurrentComponents(state.pages, state.currentPageId, newComponents),
+                     };
+                 });
+
+                 if (updatedComponentData) {
+                     emitComponentChange(updatedComponentData, get);
+                 }
              },
 
             deleteComponent: (id) => {
                 get().saveHistory();
-                set((state) => ({ components: state.components.filter(c => c.id !== id), selectedComponentId: state.selectedComponentId === id ? null : state.selectedComponentId }));
+                set((state) => {
+                    const nextComponents = state.components.filter(c => c.id !== id);
+                    return {
+                        components: nextComponents,
+                        pages: syncPagesWithCurrentComponents(state.pages, state.currentPageId, nextComponents),
+                        selectedComponentId: state.selectedComponentId === id ? null : state.selectedComponentId,
+                    };
+                });
                 signalrService.deleteElement(id);
+                scheduleSaveToProject(get);
             },
 
             bringToFront: (id) => {
-                get().updateComponent(id, { zIndex: Math.max(0, ...get().components.map(c => c.zIndex || 1)) + 1 });
+                get().updateComponent(id, { zIndex: nextZIndex(get().components) });
             },
 
             sendToBack: (id) => {
-                get().updateComponent(id, { zIndex: Math.min(2, ...get().components.map(c => c.zIndex || 1)) - 1 });
+                const zIndexes = get().components.map((component) => component.zIndex || 1);
+                if (zIndexes.length === 0) {
+                    return;
+                }
+                const minZ = Math.min(...zIndexes);
+                get().updateComponent(id, { zIndex: Math.max(1, minZ - 1) });
             },
 
             // СОБЫТИЯ ОТ СОКЕТОВ (Получаем от сервера)
@@ -228,7 +325,26 @@ export const useEditorStore = create<EditorState>()(
                     const newPage: Page = { id: generateGuid(), title, route, components: [], order: state.pages.length + 1 };
                     return { pages: [...state.pages, newPage] };
                 });
-                get().saveToProject();
+                scheduleSaveToProject(get);
+            },
+
+            updatePage: (pageId, updates) => {
+                const nextTitle = updates.title?.trim();
+                const nextRoute = updates.route?.trim();
+
+                set((state) => ({
+                    pages: state.pages.map((page) => {
+                        if (page.id !== pageId) {
+                            return page;
+                        }
+                        return {
+                            ...page,
+                            title: nextTitle ? nextTitle : page.title,
+                            route: nextRoute ? nextRoute : page.route,
+                        };
+                    }),
+                }));
+                scheduleSaveToProject(get);
             },
 
             getSyncedPages: () => {
@@ -263,6 +379,7 @@ export const useEditorStore = create<EditorState>()(
                     past: [],
                     future: [],
                 });
+                scheduleSaveToProject(get);
             },
 
             deleteComponentOnPage: (pageId, componentId) => {
@@ -287,6 +404,7 @@ export const useEditorStore = create<EditorState>()(
                     };
                 });
                 signalrService.deleteElement(componentId);
+                scheduleSaveToProject(get);
             },
 
             setCurrentPage: (pageId) => {
@@ -334,7 +452,12 @@ export const useEditorStore = create<EditorState>()(
             showContextMenu: (x, y) => set({ contextMenu: { x, y, visible: true } }),
             hideContextMenu: () => set((state) => ({ contextMenu: { ...state.contextMenu, visible: false } })),
 
+            scheduleSaveToProject: () => scheduleSaveToProject(get),
+
             initProject: (projectId, pages, legacyComponents) => {
+                clearScheduledSave();
+                savePending = false;
+
                 const rawPages: Page[] =
                     pages?.length > 0
                         ? pages
@@ -357,52 +480,54 @@ export const useEditorStore = create<EditorState>()(
             },
 
             saveToProject: async () => {
+                clearScheduledSave();
+
+                if (saveInFlight) {
+                    savePending = true;
+                    return;
+                }
+
                 const state = get();
                 if (!state.projectId) return;
 
-                const updatedPages = state.pages.map((page) =>
-                    page.id === state.currentPageId
-                        ? { ...page, components: state.components }
-                        : page
+                const updatedPages = syncPagesWithCurrentComponents(
+                    state.pages,
+                    state.currentPageId,
+                    state.components
+                );
+                const previousPageIndex = state.pages.findIndex(
+                    (page) => page.id === state.currentPageId
                 );
 
+                saveInFlight = true;
                 set({ saving: true, saveError: null });
 
                 try {
-                    await projectService.update(state.projectId, { pages: updatedPages });
+                    const savedProject = await projectService.update(state.projectId, {
+                        pages: updatedPages,
+                    });
 
-                    if (!isMockEnabled) {
-                        const idRemaps = await elementService.syncProjectElements(
-                            state.projectId,
-                            updatedPages
-                        );
+                    const nextPages = savedProject.pages;
+                    const currentPage =
+                        nextPages[previousPageIndex >= 0 ? previousPageIndex : 0] ?? nextPages[0];
 
-                        if (Object.keys(idRemaps).length > 0) {
-                            const remappedPages = updatedPages.map((page) => ({
-                                ...page,
-                                components: page.components.map((component) => ({
-                                    ...component,
-                                    id: idRemaps[component.id] ?? component.id,
-                                })),
-                            }));
-
-                            const currentPage = remappedPages.find((page) => page.id === state.currentPageId);
-                            set({
-                                pages: remappedPages,
-                                components: currentPage?.components ?? state.components,
-                            });
-                            return;
-                        }
-                    }
-
-                    set({ pages: updatedPages });
+                    set({
+                        pages: nextPages,
+                        currentPageId: currentPage?.id ?? state.currentPageId,
+                        components: currentPage?.components ?? state.components,
+                    });
                 } catch (error) {
                     const errorMessage = getErrorMessage(error, 'Не удалось сохранить проект');
                     set({ saveError: errorMessage });
                     message.error(errorMessage);
                     throw error;
                 } finally {
+                    saveInFlight = false;
                     set({ saving: false });
+                    if (savePending) {
+                        savePending = false;
+                        void get().saveToProject();
+                    }
                 }
             },
 

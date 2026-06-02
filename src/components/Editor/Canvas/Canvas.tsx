@@ -1,10 +1,9 @@
 import { useEditorStore, EditorComponent } from '@/store/editorStore';
 import { Rnd } from 'react-rnd';
 import { useCallback, useRef, useEffect } from 'react';
-import { signalrService } from '@/services/signalrService';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
-import { buildComponentFromDefinition } from '@/utils/componentDefaults';
+import { buildComponentFromDefinition, buildComponentFromSnapshot } from '@/utils/componentDefaults';
 import { getComponentMinSize } from '@/utils/componentMinSize';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
@@ -36,7 +35,6 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
          duplicateComponent,
          bringToFront,
          sendToBack,
-         projectId,
          pages,
          currentPageId,
          setCurrentPage,
@@ -52,40 +50,44 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         return { width: 800, height: 600 };
     }, []);
 
+    const clampDropPosition = useCallback((
+        position: { x: number; y: number },
+        size: { width: number; height: number }
+    ) => {
+        const bounds = getCanvasBounds();
+        const x = Math.max(0, Math.min(position.x - size.width / 2, bounds.width - size.width));
+        const y = Math.max(0, Math.min(position.y - size.height / 2, bounds.height - size.height));
+        return { x, y };
+    }, [getCanvasBounds]);
+
     const handleDragStop = useCallback((id: string, data: DraggableData) => {
         const bounds = getCanvasBounds();
         const component = components.find((c) => c.id === id);
-        if (component) {
-            const maxX = Math.max(0, bounds.width - component.width);
-            const maxY = Math.max(0, bounds.height - component.height);
-            const newX = Math.max(0, Math.min(data.x, maxX));
-            const newY = Math.max(0, Math.min(data.y, maxY));
-            
-            updateComponent(id, { x: newX, y: newY });
-            
-            // Отправляем финальную позицию в базу данных через сокет
-            if (projectId) {
-                signalrService.saveElementPosition(id, projectId);
-            }
+        if (!component) {
+            return;
         }
-    }, [components, getCanvasBounds, projectId, updateComponent]);
+
+        const maxX = Math.max(0, bounds.width - component.width);
+        const maxY = Math.max(0, bounds.height - component.height);
+        const newX = Math.max(0, Math.min(data.x, maxX));
+        const newY = Math.max(0, Math.min(data.y, maxY));
+
+        updateComponent(id, { x: newX, y: newY });
+    }, [components, getCanvasBounds, updateComponent]);
 
     const handleResizeStop = useCallback((id: string, ref: HTMLElement, position: { x: number, y: number }) => {
         const component = components.find((c) => c.id === id);
-        if (component) {
-            const definition = getComponentDefinition(component.type);
-            const { minWidth, minHeight } = getComponentMinSize(component, definition);
-            const newWidth = Math.max(minWidth, parseInt(ref.style.width, 10));
-            const newHeight = Math.max(minHeight, parseInt(ref.style.height, 10));
-
-            updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
-            
-            // Отправляем финальный размер и позицию в базу данных через сокет
-            if (projectId) {
-                signalrService.saveElementPosition(id, projectId);
-            }
+        if (!component) {
+            return;
         }
-    }, [components, getComponentDefinition, projectId, updateComponent]);
+
+        const definition = getComponentDefinition(component.type);
+        const { minWidth, minHeight } = getComponentMinSize(component, definition);
+        const newWidth = Math.max(minWidth, parseInt(ref.style.width, 10));
+        const newHeight = Math.max(minHeight, parseInt(ref.style.height, 10));
+
+        updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
+    }, [components, getComponentDefinition, updateComponent]);
 
     const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
         e.preventDefault();
@@ -130,7 +132,12 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         if (presetId) {
             const preset = getPreset(presetId);
             if (preset) {
-                addComponentFromSnapshot(preset.snapshot, position);
+                const built = buildComponentFromSnapshot(preset.snapshot, { x: 0, y: 0 });
+                const dropPosition = clampDropPosition(position, {
+                    width: built.width,
+                    height: built.height,
+                });
+                addComponentFromSnapshot(preset.snapshot, dropPosition);
             }
             return;
         }
@@ -141,8 +148,13 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         }
 
         const definition = getComponentDefinition(type);
-        addComponent(buildComponentFromDefinition(type, definition, position));
-    }, [addComponent, addComponentFromSnapshot, getComponentDefinition, getPreset, readonly]);
+        const built = buildComponentFromDefinition(type, definition, { x: 0, y: 0 });
+        const dropPosition = clampDropPosition(position, {
+            width: built.width,
+            height: built.height,
+        });
+        addComponent(buildComponentFromDefinition(type, definition, dropPosition));
+    }, [addComponent, addComponentFromSnapshot, clampDropPosition, getComponentDefinition, getPreset, readonly]);
 
     useEffect(() => {
         const handleClickOutside = () => hideContextMenu();
@@ -231,8 +243,8 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                     key={component.id}
                     size={{ width: component.width, height: component.height }}
                     position={{ x: component.x, y: component.y }}
-                    onDragStop={readonly ? undefined : (_, data) => handleDragStop(component.id, data)}
-                    onResizeStop={readonly ? undefined : (_e, _direction, ref, _delta, position) => handleResizeStop(component.id, ref, position)}
+                    onDragStop={readonly ? undefined : (_, data) => { void handleDragStop(component.id, data); }}
+                    onResizeStop={readonly ? undefined : (_e, _direction, ref, _delta, position) => { void handleResizeStop(component.id, ref, position); }}
                     onClick={(e: React.MouseEvent) => {
                         if (readonly) {
                             return;

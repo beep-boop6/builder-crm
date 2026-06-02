@@ -1,5 +1,5 @@
 const normalizeBaseUrl = (rawUrl?: string): string => {
-    const defaultUrl = 'http://localhost:5000';
+    const defaultUrl = 'http://localhost:5203';
     const prepared = (rawUrl || defaultUrl).trim();
     const withoutTrailingSlash = prepared.replace(/\/+$/, '');
     return withoutTrailingSlash.replace(/\/api$/i, '');

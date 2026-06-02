@@ -40,26 +40,49 @@ class SignalRService {
     // МЕТОДЫ ОТПРАВКИ ДАННЫХ НА БЭКЕНД (Фронтенд -> Бэкенд)
     // =========================================================
 
+    public isConnected(): boolean {
+        return this.connection?.state === signalR.HubConnectionState.Connected;
+    }
+
     // Отправка текущего состояния элемента (актуально при перемещении/изменении в реальном времени)
-    public async sendElementState(elementId: string, jsonState: string): Promise<void> {
-        if (this.connection?.state === signalR.HubConnectionState.Connected) {
-            try {
-                await this.connection.invoke("AddOrUpdateStateAsync", elementId, jsonState);
-            } catch (err) {
-                console.error("SignalR: Не удалось отправить состояние элемента:", err);
-            }
+    public async sendElementState(elementId: string, jsonState: string): Promise<boolean> {
+        if (!this.isConnected()) {
+            console.warn("SignalR: sendElementState пропущен — нет подключения к хабу.");
+            return false;
+        }
+
+        try {
+            await this.connection!.invoke("AddOrUpdateStateAsync", elementId, jsonState);
+            return true;
+        } catch (err) {
+            console.error("SignalR: Не удалось отправить состояние элемента:", err);
+            return false;
         }
     }
 
     // Сохранение финальной позиции элемента в базу данных (когда пользователь отпустил элемент)
-    public async saveElementPosition(elementId: string, projectId: string): Promise<void> {
-        if (this.connection?.state === signalR.HubConnectionState.Connected) {
-            try {
-                await this.connection.invoke("SaveElementPositionAsync", elementId, projectId);
-            } catch (err) {
-                console.error("SignalR: Не удалось сохранить позицию элемента в БД:", err);
-            }
+    public async saveElementPosition(elementId: string, projectId: string): Promise<boolean> {
+        if (!this.isConnected()) {
+            console.warn("SignalR: saveElementPosition пропущен — нет подключения к хабу.");
+            return false;
         }
+
+        try {
+            await this.connection!.invoke("SaveElementPositionAsync", elementId, projectId);
+            return true;
+        } catch (err) {
+            console.error("SignalR: Не удалось сохранить позицию элемента в БД:", err);
+            return false;
+        }
+    }
+
+    /** Сначала актуальное состояние, затем сохранение в БД (порядок важен для бэкенда). */
+    public async persistElement(elementId: string, projectId: string, jsonState: string): Promise<boolean> {
+        const stateSent = await this.sendElementState(elementId, jsonState);
+        if (!stateSent) {
+            return false;
+        }
+        return this.saveElementPosition(elementId, projectId);
     }
 
     // Удаление элемента
@@ -87,6 +110,14 @@ class SignalRService {
 
     public onDeleteAll(callback: () => void): void {
         this.connection?.on("DeleteAll", callback);
+    }
+
+    public onCreatePage(callback: (pageId: string) => void): void {
+        this.connection?.on("CreatePage", callback);
+    }
+
+    public onDeletePage(callback: (pageId: string) => void): void {
+        this.connection?.on("DeletePage", callback);
     }
 }
 
