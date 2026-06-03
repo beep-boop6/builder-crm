@@ -70,6 +70,14 @@ export const TablePropertiesView = ({
                 onUpdate={(key, value) => onUpdate(key, value)}
                 minWidth={minWidth}
                 minHeight={minHeight}
+                textAlign={(component.props?.textAlign as string) || 'left'}
+                verticalAlign={(component.props?.verticalAlign as string) || 'top'}
+                onTextAlignChange={(value) =>
+                    onUpdateProps({ ...component.props, textAlign: value })
+                }
+                onVerticalAlignChange={(value) =>
+                    onUpdateProps({ ...component.props, verticalAlign: value })
+                }
             />
 
             <AppearanceSection

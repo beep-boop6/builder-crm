@@ -165,7 +165,7 @@ export const PropertiesPanel = () => {
                 borderColor={behavior.borderColor}
                 borderWidth={behavior.borderWidth}
                 backgroundColor={selectedComponent.backgroundColor || '#FFFFFF'}
-                borderRadius={selectedComponent.borderRadius ?? 4}
+                borderRadius={selectedComponent.borderRadius ?? 12}
                 onEnabledChange={(enabled) =>
                     handleUpdateProp({
                         borderWidth: enabled ? (behavior.borderWidth > 0 ? behavior.borderWidth : 1) : 0,

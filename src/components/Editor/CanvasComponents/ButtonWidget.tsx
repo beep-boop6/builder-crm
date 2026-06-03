@@ -45,7 +45,7 @@ export const ButtonWidget = ({
         color: component.color ?? variantStyle.color,
         fontSize: component.fontSize ? `${component.fontSize}px` : sizeStyle.fontSize,
         fontWeight: component.fontWeight ?? 600,
-        fontFamily: 'Raleway, sans-serif',
+        fontFamily: 'inherit',
         border: variantStyle.border,
         padding: sizeStyle.padding,
         cursor: canNavigate ? 'pointer' : readonly ? 'default' : 'pointer',

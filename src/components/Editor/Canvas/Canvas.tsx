@@ -24,6 +24,10 @@ interface DraggableData {
     y: number;
 }
 
+const isInteractiveCanvasTarget = (target: EventTarget | null): boolean =>
+    target instanceof HTMLElement &&
+    Boolean(target.closest('input, textarea, button, select, a, [contenteditable="true"]'));
+
 export const Canvas = ({ components, readonly = false }: CanvasProps) => {
     const {
         updateComponent,
@@ -178,7 +182,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
             width: '100%',
             height: '100%',
             backgroundColor: component.backgroundColor,
-            borderRadius: `${component.borderRadius ?? 4}px`,
+            borderRadius: `${component.borderRadius ?? 12}px`,
             color: component.color || '#ffffff',
             fontSize: `${component.fontSize ?? 14}px`,
             fontWeight: component.fontWeight ?? 500,
@@ -186,7 +190,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
-            fontFamily: 'Raleway, sans-serif'
+            fontFamily: (component.props?.fontFamily as string) || 'Raleway, sans-serif'
         };
 
         if (component.type === 'button') {
@@ -262,10 +266,17 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 const borderColor = String(componentProps.borderColor ?? '#E8E8E8');
                 const isSelected = !readonly && selectedComponentId === component.id;
                 const shellStyle: React.CSSProperties = {
-                    borderRadius: `${component.borderRadius ?? 4}px`,
-                    border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : 'none',
+                    borderRadius: `${component.borderRadius ?? 12}px`,
+                    border: 'none',
+                    boxShadow: borderWidth > 0 ? `0 0 0 ${borderWidth}px ${borderColor}` : 'none',
                     outline: isSelected ? '2px solid #1890ff' : 'none',
                     outlineOffset: 0,
+                    opacity: (readonly && (componentProps.disabled)) ? 0.5 : opacity,
+                    pointerEvents: (readonly && (componentProps.disabled)) ? 'none' : 'auto',
+                    fontFamily: (componentProps.fontFamily as string) || 'Raleway, sans-serif',
+                    fontWeight: component.fontWeight ?? 500,
+                    fontSize: `${component.fontSize ?? 14}px`,
+                    color: component.color || '#ffffff',
                 };
 
                 if (!isVisible) {
@@ -279,8 +290,8 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                         position={{ x: component.x, y: component.y }}
                         onDragStop={readonly ? undefined : (_, data) => { void handleDragStop(component.id, data); }}
                         onResizeStop={readonly ? undefined : (_e, _direction, ref, _delta, position) => { void handleResizeStop(component.id, ref, position); }}
-                        onClick={(e: React.MouseEvent) => {
-                            if (readonly) {
+                        onDoubleClick={(e: React.MouseEvent) => {
+                            if (readonly || isInteractiveCanvasTarget(e.target)) {
                                 return;
                             }
                             e.stopPropagation();
