@@ -34,7 +34,7 @@ export const ChartPropertiesView = ({
     const chartColor =
         (component.props?.style as { color?: string } | undefined)?.color
         ?? (component.props?.color as string | undefined)
-        ?? '#1976d2';
+        ?? '#E8E8E8';
     const chartBackgroundColor =
         (component.props?.backgroundColor as string | undefined)
         ?? component.backgroundColor
@@ -122,6 +122,7 @@ export const ChartPropertiesView = ({
                 onUpdate={(key, value) => onUpdate(key, value)}
                 minWidth={minWidth}
                 minHeight={minHeight}
+                hideAlignment={true}
             />
         </>
     );

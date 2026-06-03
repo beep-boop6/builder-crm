@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useDataStore } from '../../../store/dataStore';
 import { useEditorStore } from '../../../store/editorStore';
 import { applyTableMapping } from '@/utils/dataMapping';
@@ -14,15 +15,34 @@ interface TableWidgetProps {
     props: ComponentDataProps & Record<string, unknown>;
 }
 
+type TableColumn = { id: string; title: string };
+
+type BandSelection =
+    | { type: 'row'; rowId: string }
+    | { type: 'column'; colId: string }
+    | null;
+
+const V_ALIGN_FLEX: Record<string, React.CSSProperties['alignItems']> = {
+    top: 'flex-start',
+    middle: 'center',
+    bottom: 'flex-end',
+};
+
+let uidCounter = 0;
+const uid = () => `t${Date.now()}-${++uidCounter}`;
+
 export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) => {
     const { sources, loadData } = useDataStore();
     const updateComponentProps = useEditorStore((state) => state.updateComponentProps);
     const selectedComponentId = useEditorStore((state) => state.selectedComponentId);
     const canvasComponents = useEditorStore((state) => state.components);
-    const isSelected = selectedComponentId === componentId;
+    const isTableSelected = selectedComponentId === componentId;
+
+    const [bandSelection, setBandSelection] = useState<BandSelection>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
     const dataSourceId = props.dataSourceId;
-    const source = sources.find((item) => item.id === dataSourceId);
+    const source = sources.find((s) => s.id === dataSourceId);
 
     useEffect(() => {
         if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading && !source.error) {
@@ -30,16 +50,18 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         }
     }, [dataSourceId, source, loadData]);
 
+    useEffect(() => {
+        if (!isTableSelected) setBandSelection(null);
+    }, [isTableSelected]);
+
     const activeFilters = useMemo(
         () => collectFiltersForTarget(canvasComponents, componentId),
         [canvasComponents, componentId]
     );
 
-    const placeholderColumns = useMemo(() => {
-        const rawColumns = props.columns as string[] | undefined;
-        if (rawColumns?.length) {
-            return rawColumns.map((title, index) => ({ id: `col${index + 1}`, title }));
-        }
+    const placeholderColumns = useMemo((): TableColumn[] => {
+        const raw = props.columns as string[] | undefined;
+        if (raw?.length) return raw.map((title, i) => ({ id: `col${i + 1}`, title }));
         return [
             { id: 'col1', title: 'Колонка 1' },
             { id: 'col2', title: 'Колонка 2' },
@@ -47,192 +69,271 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         ];
     }, [props.columns]);
 
-    const mapped = useMemo(() => {
+    // Колонки и строки для ОТОБРАЖЕНИЯ (могут быть отфильтрованы)
+    const { columns, displayData, validationError } = useMemo(() => {
         if (props.customData && props.customColumns) {
-            const filteredData = applyFiltersToRows(
-                props.customData as DataRow[],
-                activeFilters
-            );
             return {
-                columns: props.customColumns,
-                data: filteredData,
+                columns: props.customColumns as TableColumn[],
+                displayData: applyFiltersToRows(props.customData as DataRow[], activeFilters),
                 validationError: null as string | null,
             };
         }
-
         if (!source?.data || source.data.length === 0) {
-            return {
-                columns: placeholderColumns,
-                data: [] as DataRow[],
-                validationError: null as string | null,
-            };
+            return { columns: placeholderColumns, displayData: [] as DataRow[], validationError: null };
         }
-
         const mappings = props.columnMappings as TableColumnMapping[] | undefined;
         const validation = validateTableMapping(source.data, mappings ?? []);
         if (!validation.valid) {
             return {
                 columns: [{ id: 'error', title: 'Ошибка' }],
-                data: [{ id: 'error-row', error: validation.error }],
+                displayData: [{ id: 'error-row', error: validation.error }] as DataRow[],
                 validationError: validation.error ?? null,
             };
         }
-
-        const filteredRows = applyFiltersToRows(source.data, activeFilters);
-        const applied = applyTableMapping(filteredRows, mappings);
         return {
-            ...applied,
-            validationError: null as string | null,
+            columns: placeholderColumns,
+            displayData: applyFiltersToRows(applyTableMapping(source.data, mappings).data as DataRow[], activeFilters),
+            validationError: null,
         };
-    }, [
-        activeFilters,
-        componentId,
-        placeholderColumns,
-        props.customColumns,
-        props.customData,
-        props.columnMappings,
-        source?.data,
-    ]);
+    }, [activeFilters, placeholderColumns, props.customColumns, props.customData, props.columnMappings, source?.data]);
 
-    const { columns, data, validationError } = mapped;
+    // Исходные (нефильтрованные) строки — только для мутаций
+    const sourceRows = useCallback((): DataRow[] => {
+        if (props.customData) return props.customData as DataRow[];
+        return [];
+    }, [props.customData]);
+
+    const sourceColumns = useCallback((): TableColumn[] => {
+        if (props.customColumns) return props.customColumns as TableColumn[];
+        return columns;
+    }, [props.customColumns, columns]);
+
+    const persist = useCallback(
+        (nextCols: TableColumn[], nextRows: DataRow[]) => {
+            updateComponentProps(componentId, { customColumns: nextCols, customData: nextRows });
+        },
+        [componentId, updateComponentProps]
+    );
+
+    // Если ещё нет customData — возвращаем одну пустую строку для вставки
+    const ensureRows = useCallback((): DataRow[] => {
+        const rows = sourceRows();
+        if (rows.length > 0) return rows;
+        return [{ id: uid(), ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])) }];
+    }, [sourceRows, sourceColumns]);
 
     const handleHeaderChange = (colId: string, newTitle: string) => {
-        const updatedCols = columns.map((column: { id: string; title: string }) =>
-            column.id === colId ? { ...column, title: newTitle } : column
-        );
-        updateComponentProps(componentId, { customColumns: updatedCols, customData: data });
+        const updatedCols = sourceColumns().map((c) => c.id === colId ? { ...c, title: newTitle } : c);
+        persist(updatedCols, sourceRows());
     };
 
-    const handleCellChange = (rowId: string, colId: string, newValue: string) => {
-        const updatedRows = data.map((row: Record<string, unknown>) =>
-            row.id === rowId ? { ...row, [colId]: newValue } : row
-        );
-        updateComponentProps(componentId, { customData: updatedRows, customColumns: columns });
+    const handleCellChange = (rowId: string, colId: string, value: string) => {
+        const rows = sourceRows();
+        if (rows.length === 0) {
+            // Таблица пустая — создаём первую строку
+            const newRow: DataRow = { id: rowId, ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])), [colId]: value };
+            persist(sourceColumns(), [newRow]);
+            return;
+        }
+        const updated = rows.map((r) => r.id === rowId ? { ...r, [colId]: value } : r);
+        persist(sourceColumns(), updated);
     };
 
-    const addColumn = () => {
-        const newColId = `col${Date.now()}`;
-        const updatedCols = [...columns, { id: newColId, title: 'Новая' }];
-        const updatedRows = data.map((row: Record<string, unknown>) => ({ ...row, [newColId]: '' }));
-        updateComponentProps(componentId, { customColumns: updatedCols, customData: updatedRows });
+    const insertColumnAfter = (index: number) => {
+        const newColId = uid();
+        const cols = [...sourceColumns()];
+        cols.splice(index + 1, 0, { id: newColId, title: 'Новая' });
+        const rows = ensureRows().map((r) => ({ ...r, [newColId]: '' }));
+        persist(cols, rows);
     };
 
-    const addRow = () => {
-        const newRowId = `row${Date.now()}`;
-        const newRow: Record<string, unknown> = { id: newRowId };
-        columns.forEach((column: { id: string }) => {
-            newRow[column.id] = '';
+    const insertRowAfter = (index: number) => {
+        const newRow: DataRow = { id: uid(), ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])) };
+        const rows = [...ensureRows()];
+        rows.splice(index + 1, 0, newRow);
+        persist(sourceColumns(), rows);
+    };
+
+    const removeColumn = useCallback((colId: string) => {
+        const cols = sourceColumns();
+        if (cols.length <= 1) return;
+        const updatedCols = cols.filter((c) => c.id !== colId);
+        const updatedRows = sourceRows().map((r) => {
+            const { [colId]: _, ...rest } = r;
+            return rest as DataRow;
         });
-        updateComponentProps(componentId, { customData: [...data, newRow], customColumns: columns });
-    };
+        persist(updatedCols, updatedRows);
+        setBandSelection(null);
+    }, [sourceColumns, sourceRows, persist]);
 
-    const removeColumn = (colId: string) => {
-        if (window.confirm('Вы уверены, что хотите удалить этот столбец?')) {
-            const updatedCols = columns.filter((column: { id: string }) => column.id !== colId);
-            updateComponentProps(componentId, { customColumns: updatedCols, customData: data });
-        }
-    };
+    const removeRow = useCallback((rowId: string) => {
+        const rows = sourceRows();
+        if (rows.length <= 1) return;
+        persist(sourceColumns(), rows.filter((r) => r.id !== rowId));
+        setBandSelection(null);
+    }, [sourceRows, sourceColumns, persist]);
 
-    const removeRow = (rowId: string) => {
-        if (window.confirm('Вы уверены, что хотите удалить эту строку?')) {
-            const updatedRows = data.filter((row: Record<string, unknown>) => row.id !== rowId);
-            updateComponentProps(componentId, { customData: updatedRows, customColumns: columns });
-        }
-    };
+    // Backspace/Delete когда выбрана полоса
+    useEffect(() => {
+        if (!isTableSelected || !bandSelection) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+            const target = e.target as HTMLElement | null;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (bandSelection.type === 'column') removeColumn(bandSelection.colId);
+            else removeRow(bandSelection.rowId);
+        };
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [bandSelection, isTableSelected, removeColumn, removeRow]);
 
-    if (source?.isLoading) {
-        return <div>Загрузка данных...</div>;
-    }
-
-    if (source?.error) {
-        return <div style={{ color: 'red' }}>Ошибка: {source.error}</div>;
-    }
-
-    if (validationError) {
-        return <div style={{ color: '#d48806' }}>Маппинг: {validationError}</div>;
-    }
+    const isRowSel = (id: string) => bandSelection?.type === 'row' && bandSelection.rowId === id;
+    const isColSel = (id: string) => bandSelection?.type === 'column' && bandSelection.colId === id;
 
     const textAlign = (props.textAlign as string) || 'left';
     const verticalAlign = (props.verticalAlign as string) || 'top';
 
-    const cellStyle: React.CSSProperties = {
-        textAlign: textAlign as React.CSSProperties['textAlign'],
-        verticalAlign: verticalAlign as React.CSSProperties['verticalAlign'],
-    };
+    const cellAlignStyle = (): React.CSSProperties => ({
+        alignItems: V_ALIGN_FLEX[verticalAlign] ?? 'flex-start',
+        justifyContent: textAlign === 'center' ? 'center' : textAlign === 'right' ? 'flex-end' : 'flex-start',
+    });
+    const inputAlignStyle: React.CSSProperties = { textAlign: textAlign as React.CSSProperties['textAlign'] };
 
-    const appliedStyles = {
-        ...(props.style as Record<string, unknown>),
-        width: (props.style as { width?: string })?.width || '100%',
-        height: (props.style as { height?: string })?.height || '100%',
-    };
+    // Строки для рендера: при пустых данных и фокусе — одна пустая строка с реальным id
+    const renderRows: DataRow[] = useMemo(() => {
+        if (displayData.length > 0) return displayData;
+        if (isTableSelected) return [{ id: uid(), ...Object.fromEntries(columns.map((c) => [c.id, ''])) }];
+        return [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [displayData, isTableSelected, columns.length]);
+
+    const gridTemplateColumns = `repeat(${columns.length}, minmax(0, 1fr))`;
+
+    if (source?.isLoading) return <div className={styles.stateMessage}>Загрузка данных...</div>;
+    if (source?.error) return <div className={`${styles.stateMessage} ${styles.stateError}`}>Ошибка: {source.error}</div>;
+    if (validationError) return <div className={`${styles.stateMessage} ${styles.stateWarning}`}>Маппинг: {validationError}</div>;
 
     return (
-        <div className={styles.tableWrapper} style={appliedStyles}>
-            <table className={styles.table}>
-                <thead>
-                    <tr>
-                        {columns.map((col: { id: string; title: string }) => (
-                            <th key={col.id} style={cellStyle}>
-                                <input
-                                    className={styles.editInput}
-                                    style={{ textAlign: cellStyle.textAlign }}
-                                    value={col.title}
-                                    onChange={(e) => handleHeaderChange(col.id, e.target.value)}
-                                    placeholder="Заголовок"
-                                />
-                                {isSelected && (
+        <div
+            ref={wrapperRef}
+            className={`${styles.tableWrapper} ${isTableSelected ? styles.tableWrapperActive : ''}`}
+            data-table-id={componentId}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+        >
+            <div className={styles.tableGrid}>
+                {/* Заголовки */}
+                <div className={styles.headerRow} style={{ gridTemplateColumns }}>
+                    {columns.map((col, colIndex) => (
+                        <div
+                            key={col.id}
+                            className={`${styles.headerCell} ${isColSel(col.id) ? styles.bandSelected : ''}`}
+                        >
+                            <input
+                                className={styles.editInput}
+                                style={inputAlignStyle}
+                                value={col.title}
+                                onChange={(e) => handleHeaderChange(col.id, e.target.value)}
+                                onFocus={() => setBandSelection(null)}
+                                placeholder="Заголовок"
+                            />
+                            {isTableSelected && (
+                                <>
+                                    {/* Выбор колонки — верхняя полоска */}
                                     <button
-                                        className={styles.deleteColBtn}
-                                        onClick={() => removeColumn(col.id)}
-                                        title="Удалить столбец"
-                                    >
-                                        ×
-                                    </button>
-                                )}
-                            </th>
-                        ))}
-                        {isSelected && (
-                            <th style={{ width: '40px' }}>
-                                <button className={styles.actionButton} onClick={addColumn}>+</button>
-                            </th>
-                        )}
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((row: Record<string, unknown>) => (
-                        <tr key={String(row.id)}>
-                            {columns.map((col: { id: string }) => (
-                                <td key={`${row.id}-${col.id}`} style={cellStyle}>
-                                    <input
-                                        className={styles.editInput}
-                                        style={{ textAlign: cellStyle.textAlign }}
-                                        value={String(row[col.id] ?? '')}
-                                        onChange={(e) => handleCellChange(String(row.id), col.id, e.target.value)}
+                                        type="button"
+                                        className={styles.colSelectStrip}
+                                        tabIndex={-1}
+                                        onClick={(e) => { e.stopPropagation(); setBandSelection({ type: 'column', colId: col.id }); }}
                                     />
-                                </td>
-                            ))}
-                            {isSelected && (
-                                <td style={{ width: '40px', padding: 0 }}>
+                                    {/* + добавить колонку справа */}
                                     <button
-                                        className={styles.deleteRowBtn}
-                                        onClick={() => removeRow(String(row.id))}
-                                        title="Удалить строку"
+                                        type="button"
+                                        className={styles.insertHandleCol}
+                                        title="Добавить столбец справа"
+                                        onClick={(e) => { e.stopPropagation(); insertColumnAfter(colIndex); }}
                                     >
-                                        ×
+                                        <PlusOutlined />
                                     </button>
-                                </td>
+                                    {/* × удалить колонку — при выборе */}
+                                    {isColSel(col.id) && (
+                                        <button
+                                            type="button"
+                                            className={styles.deleteHandleCol}
+                                            title="Удалить столбец"
+                                            onClick={(e) => { e.stopPropagation(); removeColumn(col.id); }}
+                                        >
+                                            <CloseOutlined />
+                                        </button>
+                                    )}
+                                </>
                             )}
-                        </tr>
+                        </div>
                     ))}
-                    {isSelected && (
-                        <tr className={styles.controlsRow}>
-                            <td colSpan={columns.length + 1}>
-                                <button className={styles.actionButton} onClick={addRow}>+ Добавить строку</button>
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </table>
+                </div>
+
+                {/* Строки */}
+                <div className={styles.bodyRows}>
+                    {renderRows.map((row, rowIndex) => (
+                        <div
+                            key={String(row.id)}
+                            className={`${styles.dataRow} ${isRowSel(String(row.id)) ? styles.rowBandSelected : ''}`}
+                            style={{ gridTemplateColumns }}
+                        >
+                            {columns.map((col) => (
+                                <div
+                                    key={`${row.id}-${col.id}`}
+                                    className={`${styles.bodyCell} ${isColSel(col.id) ? styles.bandSelected : ''}`}
+                                >
+                                    <div className={styles.cellInner} style={cellAlignStyle()}>
+                                        <input
+                                            className={styles.editInput}
+                                            style={inputAlignStyle}
+                                            value={String(row[col.id] ?? '')}
+                                            onChange={(e) => handleCellChange(String(row.id), col.id, e.target.value)}
+                                            onFocus={() => setBandSelection(null)}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            {isTableSelected && (
+                                <>
+                                    {/* Выбор строки — левая полоска */}
+                                    <button
+                                        type="button"
+                                        className={styles.rowSelectStrip}
+                                        tabIndex={-1}
+                                        onClick={(e) => { e.stopPropagation(); setBandSelection({ type: 'row', rowId: String(row.id) }); }}
+                                    />
+                                    {/* × удалить строку — при выборе */}
+                                    {isRowSel(String(row.id)) && (
+                                        <button
+                                            type="button"
+                                            className={styles.deleteHandleRow}
+                                            title="Удалить строку"
+                                            onClick={(e) => { e.stopPropagation(); removeRow(String(row.id)); }}
+                                        >
+                                            <CloseOutlined />
+                                        </button>
+                                    )}
+                                    {/* + добавить строку снизу */}
+                                    <button
+                                        type="button"
+                                        className={styles.insertHandleRow}
+                                        title="Добавить строку ниже"
+                                        onClick={(e) => { e.stopPropagation(); insertRowAfter(rowIndex); }}
+                                    >
+                                        <PlusOutlined />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };

@@ -1,119 +1,225 @@
 .tableWrapper {
-       width: 100%;
-       height: 100%;
-       border: 1px solid var(--border-color, #ccc);
-       border-radius: 4px;
-       background-color: #ffffff; /* Делаем фон непрозрачным белым по умолчанию */
-       overflow: hidden;
-       display: flex;
-       flex-direction: column;
-   }
-
-.table {
     width: 100%;
     height: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
+    border: 1px solid var(--border-color, #d9d9d9);
+    border-radius: 4px;
+    background-color: #ffffff;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
-.table th, .table td {
+.tableWrapperActive {
+    box-shadow: inset 0 0 0 1px rgba(24, 144, 255, 0.45);
+}
+
+.tableGrid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.headerRow {
+    display: grid;
+    width: 100%;
+    flex: 0 0 auto;
+}
+
+.bodyRows {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+}
+
+.dataRow {
+    display: grid;
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 36px;
+    position: relative;
+}
+
+/* ─── Ячейки ─────────────────────────────────────────────── */
+
+.headerCell {
+    position: relative;
+    background-color: #f5f5f5;
+    font-weight: 600;
     border-bottom: 1px solid var(--border-color, #eee);
     border-right: 1px solid var(--border-color, #eee);
-    padding: 0;
-    position: relative; /* Для позиционирования кнопок удаления */
-    background-color: #ffffff; /* Непрозрачный фон ячеек */
+    box-sizing: border-box;
+    min-height: 36px;
+    display: flex;
+    flex-direction: column;
 }
 
-.table th:last-child, .table td:last-child {
-    border-right: none;
+.headerCell:last-child { border-right: none; }
+
+.bodyCell {
+    position: relative;
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--border-color, #eee);
+    border-right: 1px solid var(--border-color, #eee);
+    box-sizing: border-box;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-.table th {
-    background-color: var(--sidebar-bg, #f5f5f5);
-    font-weight: 600;
+.bodyCell:last-child { border-right: none; }
+
+.dataRow:last-child .bodyCell { border-bottom: none; }
+
+.cellInner {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 36px;
+    box-sizing: border-box;
+    padding: 0 8px;
 }
 
 .editInput {
+    flex: 1;
     width: 100%;
-    height: 100%;
-    min-height: 30px;
+    min-width: 0;
     box-sizing: border-box;
     border: none;
     background: transparent;
-    padding: 8px 12px;
+    padding: 0;
+    margin: 0;
     font-family: inherit;
     font-size: inherit;
     color: inherit;
     outline: none;
+    line-height: 1.4;
 }
 
-.editInput:focus {
-    background-color: rgba(25, 118, 210, 0.05);
-}
+.editInput:focus { outline: none; background: transparent; }
 
-.controlsRow {
-    background-color: #fafafa;
-}
+/* ─── Выделение полосы ───────────────────────────────────── */
 
-.actionButton {
-    border: none;
-    background: transparent;
-    color: var(--primary-color, #1976d2);
-    cursor: pointer;
-    padding: 8px;
-    font-size: 12px;
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+.bandSelected { background-color: rgba(24, 144, 255, 0.13) !important; }
+.rowBandSelected > .bodyCell { background-color: rgba(24, 144, 255, 0.13); }
 
-.actionButton:hover {
-    background-color: rgba(0,0,0,0.05);
-}
+/* ─── Выбор столбца: полоска сверху в заголовке ─────────── */
 
-/* Стили для кнопок удаления (крестиков) */
-.deleteColBtn {
+.colSelectStrip {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    background: #ff4d4f;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    font-size: 10px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.6;
-    z-index: 10;
-    padding: 0;
-}
-
-.deleteColBtn:hover {
-    opacity: 1;
-}
-
-.deleteRowBtn {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
     background: transparent;
-    color: #ff4d4f;
     border: none;
     cursor: pointer;
-    font-size: 16px;
-    width: 100%;
-    height: 100%;
+    padding: 0;
+    margin: 0;
+    z-index: 3;
+}
+.colSelectStrip:hover { background: rgba(24, 144, 255, 0.18); }
+
+/* ─── Выбор строки: полоска слева ───────────────────────── */
+
+.rowSelectStrip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    bottom: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    z-index: 3;
+}
+.rowSelectStrip:hover { background: rgba(24, 144, 255, 0.18); }
+
+/* ─── Кнопки + (появляются при hover) ───────────────────── */
+
+.insertHandleCol,
+.insertHandleRow {
+    position: absolute;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.6;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: #1890ff;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+    font-size: 9px;
+    line-height: 1;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
 }
 
-.deleteRowBtn:hover {
-    opacity: 1;
+/* + для колонки: правый край заголовка */
+.insertHandleCol {
+    right: 1px;
+    top: 50%;
+    transform: translateY(-50%);
 }
+
+/* + для строки: левый нижний угол строки */
+.insertHandleRow {
+    left: 1px;
+    bottom: 1px;
+}
+
+.headerCell:hover .insertHandleCol { opacity: 1; }
+.dataRow:hover .insertHandleRow { opacity: 1; }
+.insertHandleCol:hover,
+.insertHandleRow:hover { opacity: 1 !important; background: #096dd9; }
+
+/* ─── Кнопки × (появляются при выборе полосы) ───────────── */
+
+.deleteHandleCol,
+.deleteHandleRow {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: #ff4d4f;
+    color: #fff;
+    cursor: pointer;
+    z-index: 11;
+    font-size: 9px;
+    line-height: 1;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+}
+
+.deleteHandleCol {
+    top: 1px;
+    right: 1px;
+}
+
+.deleteHandleRow {
+    top: 1px;
+    left: 1px;
+}
+
+.deleteHandleCol:hover,
+.deleteHandleRow:hover { background: #cf1322; }
+
+/* ─── Состояния загрузки/ошибок ──────────────────────────── */
+
+.stateMessage { padding: 12px; font-size: 13px; }
+.stateError   { color: #ff4d4f; }
+.stateWarning { color: #d48806; }

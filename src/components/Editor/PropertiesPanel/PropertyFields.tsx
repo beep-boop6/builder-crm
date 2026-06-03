@@ -1,3 +1,4 @@
+import React, { useRef, useEffect, useCallback } from 'react';
 import type { ReactNode, SelectHTMLAttributes, InputHTMLAttributes } from 'react';
 import {
     AlignCenterOutlined,
@@ -59,6 +60,70 @@ export const PropertyPanelHeader = ({
         </div>
     </div>
 );
+
+/* ─────────────────────────── Generic hooks ──────────────────────────── */
+
+export const useNumberDrag = (value: number, onChange: (v: number) => void, min?: number, max?: number, step = 1) => {
+    const startX = useRef(0);
+    const valueRef = useRef(value);
+    
+    useEffect(() => { valueRef.current = value; }, [value]);
+
+    const handlePointerDown = useCallback((e: React.PointerEvent) => {
+        if (e.button !== 2 && e.button !== 0) return;
+        if (e.button === 0 && (e.target as HTMLElement).tagName === 'INPUT') return;
+
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+
+        startX.current = e.clientX;
+        const startVal = valueRef.current;
+
+        const onPointerMove = (moveEvent: PointerEvent) => {
+            const diffX = moveEvent.clientX - startX.current;
+            let newValue = startVal + Math.round(diffX / 2) * step;
+            if (min !== undefined) newValue = Math.max(min, newValue);
+            if (max !== undefined) newValue = Math.min(max, newValue);
+            onChange(newValue);
+        };
+
+        const onPointerUp = (upEvent: Event) => {
+            try {
+                if ('pointerId' in upEvent) {
+                    e.currentTarget.releasePointerCapture((upEvent as PointerEvent).pointerId);
+                }
+            } catch (err) {
+                // Ignore if capture was already lost
+            }
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+            window.removeEventListener('contextmenu', preventCtx, true);
+        };
+
+        const preventCtx = (ev: Event) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+        };
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
+        if (e.button === 2) {
+            window.addEventListener('contextmenu', preventCtx, true);
+        }
+    }, [onChange, min, max, step]);
+
+    return { 
+        onPointerDown: handlePointerDown, 
+        onContextMenu: (e: React.MouseEvent) => {
+            if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    };
+};
 
 /* ─────────────────────────── Generic primitives ─────────────────────── */
 
@@ -226,10 +291,13 @@ interface ParamInputProps {
     disabled?: boolean;
 }
 
-const ParamInput = ({ label, value, onChange, min, max, prefix, disabled }: ParamInputProps) => (
+const ParamInput = ({ label, value, onChange, min, max, prefix, disabled }: ParamInputProps) => {
+    const dragProps = useNumberDrag(value, onChange, min, max, 1);
+    
+    return (
     <div className={styles.paramField}>
         <span className={styles.paramLabel}>{label}</span>
-        <div className={styles.paramInputRow}>
+        <div className={styles.paramInputRow} {...(!disabled ? dragProps : {})} style={!disabled ? { cursor: 'ew-resize' } : {}}>
             {prefix && <span className={styles.paramInputPrefix}>{prefix}</span>}
             <input
                 type="number"
@@ -242,7 +310,8 @@ const ParamInput = ({ label, value, onChange, min, max, prefix, disabled }: Para
             />
         </div>
     </div>
-);
+    );
+};
 
 /* ─────────────────────────── Color + opacity field ─────────────────── */
 
@@ -250,9 +319,11 @@ interface ColorOpacityFieldProps {
     label: string;
     color: string;
     onChange: (color: string) => void;
+    onOpacityChange?: (v: number) => void;
+    opacity?: number;
 }
 
-const ColorOpacityField = ({ label, color, onChange }: ColorOpacityFieldProps) => {
+const ColorOpacityField = ({ label, color, onChange, onOpacityChange, opacity = 1 }: ColorOpacityFieldProps) => {
     const hex = color.replace('#', '').toUpperCase().slice(0, 6) || 'FFFFFF';
     const handleHex = (raw: string) => {
         const val = raw.replace('#', '').slice(0, 6);
@@ -278,7 +349,11 @@ const ColorOpacityField = ({ label, color, onChange }: ColorOpacityFieldProps) =
                     className={styles.colorHexInline}
                     maxLength={6}
                 />
-                <span className={styles.colorOpacityPct}>100%</span>
+                {onOpacityChange && (
+                    <div className={styles.opacityField} {...useNumberDrag(Math.round(opacity * 100), (v) => onOpacityChange(v / 100), 0, 100, 1)}>
+                        {Math.round(opacity * 100)}%
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -318,6 +393,7 @@ interface LayoutSectionsProps {
     onOpacityChange?: (v: number) => void;
     onTextAlignChange?: (v: string) => void;
     onVerticalAlignChange?: (v: string) => void;
+    hideAlignment?: boolean;
 }
 
 export const LayoutSections = ({
@@ -334,6 +410,7 @@ export const LayoutSections = ({
     onOpacityChange,
     onTextAlignChange,
     onVerticalAlignChange,
+    hideAlignment = false,
 }: LayoutSectionsProps) => {
     const clampW = (v: number) => {
         let n = Math.max(minWidth, v);
@@ -421,38 +498,44 @@ export const LayoutSections = ({
             {/* Row 2: Alignment + Opacity */}
             <div className={styles.params2col}>
                 {/* Alignment */}
-                <div className={styles.paramGroup}>
-                    <span className={styles.paramGroupLabel}>Выравнивание</span>
-                    <div className={styles.alignRow}>
-                        {H_ALIGNS.map((a) => (
-                            <button
-                                key={a.value}
-                                type="button"
-                                title={a.title}
-                                className={`${styles.alignBtn} ${textAlign === a.value ? styles.alignBtnActive : ''}`}
-                                onClick={() => onTextAlignChange?.(a.value)}
-                            >
-                                {a.icon}
-                            </button>
-                        ))}
-                        {V_ALIGNS.map((a) => (
-                            <button
-                                key={a.value}
-                                type="button"
-                                title={a.title}
-                                className={`${styles.alignBtn} ${verticalAlign === a.value ? styles.alignBtnActive : ''}`}
-                                onClick={() => onVerticalAlignChange?.(a.value)}
-                            >
-                                {a.icon}
-                            </button>
-                        ))}
+                {!hideAlignment && (
+                    <div className={styles.paramGroup}>
+                        <span className={styles.paramGroupLabel}>Выравнивание</span>
+                        <div className={styles.alignRow}>
+                            {H_ALIGNS.map((a) => (
+                                <button
+                                    key={a.value}
+                                    type="button"
+                                    title={a.title}
+                                    className={`${styles.alignBtn} ${textAlign === a.value ? styles.alignBtnActive : ''}`}
+                                    onClick={() => onTextAlignChange?.(a.value)}
+                                >
+                                    {a.icon}
+                                </button>
+                            ))}
+                            {V_ALIGNS.map((a) => (
+                                <button
+                                    key={a.value}
+                                    type="button"
+                                    title={a.title}
+                                    className={`${styles.alignBtn} ${verticalAlign === a.value ? styles.alignBtnActive : ''}`}
+                                    onClick={() => onVerticalAlignChange?.(a.value)}
+                                >
+                                    {a.icon}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Opacity */}
                 <div className={styles.paramGroup}>
                     <span className={styles.paramGroupLabel}>Прозрачность</span>
-                    <div className={styles.paramInputRow}>
+                    <div 
+                        className={styles.paramInputRow}
+                        {...useNumberDrag(Math.round(opacity * 100), (v) => onOpacityChange?.(v / 100), 0, 100, 1)}
+                        style={{ cursor: 'ew-resize' }}
+                    >
                         <span
                             className={styles.opacitySquare}
                             style={{ opacity }}
@@ -536,7 +619,7 @@ export const BorderSection = ({
                 onChange={onBackgroundColorChange}
             />
             <ParamInput
-                label="Закругление углов"
+                label="Закругление"
                 value={borderRadius}
                 onChange={onBorderRadiusChange}
                 min={0}

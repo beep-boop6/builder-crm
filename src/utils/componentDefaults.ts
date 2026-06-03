@@ -76,8 +76,12 @@ export const buildComponentFromDefinition = (
                 : type === 'chart' || isCard || type === 'form' || type === 'filter'
                     ? '#333333'
                     : '#ffffff',
-        borderRadius: type === 'button' || isCard ? 8 : 4,
-        props: isCard ? cardProps : structuredClone(definition.defaultProps),
+        borderRadius: 12,
+        props: isCard
+            ? { ...cardProps, borderWidth: 1, borderColor: '#E8E8E8' }
+            : type === 'chart'
+                ? { ...structuredClone(definition.defaultProps), borderWidth: 1, borderColor: '#E8E8E8', color: '#E8E8E8' }
+                : { ...structuredClone(definition.defaultProps), borderWidth: 1, borderColor: '#E8E8E8' },
     };
 };
 

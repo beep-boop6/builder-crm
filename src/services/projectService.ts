@@ -5,7 +5,11 @@ import { requestWithFallback } from './api';
 import { elementService } from './elementService';
 import { pageService } from './pageService';
 import { syncProjectPages } from './projectSyncService';
-import { fromBackendNavigation, toBackendNavigation } from '@/utils/backendNavigation';
+import {
+    fromBackendNavigation,
+    toBackendNavigation,
+    type BackendNavigationType,
+} from '@/utils/backendNavigation';
 
 type RawProject = Partial<Project> & {
     Id?: string;
@@ -117,7 +121,10 @@ export const projectService = {
             return mockApi.createProject(data);
         }
 
-        const created = await requestWithFallback<RawProject, { name: string; navigationType: string }>({
+        const created = await requestWithFallback<
+            RawProject,
+            { name: string; navigationType: BackendNavigationType }
+        >({
             method: 'POST',
             paths: ['/projects'],
             data: {

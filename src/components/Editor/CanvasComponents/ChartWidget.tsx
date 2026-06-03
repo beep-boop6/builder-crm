@@ -119,7 +119,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
     const seriesColor = normalizeHex(
         (props.style as { color?: string } | undefined)?.color
             ?? (props.color as string | undefined),
-        '#1976d2'
+        '#E8E8E8'
     );
     const backgroundColor = normalizeHex(
         fillColor

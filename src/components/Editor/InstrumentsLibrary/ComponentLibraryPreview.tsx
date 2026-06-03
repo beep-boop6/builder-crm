@@ -40,7 +40,7 @@ export const ComponentLibraryPreview = ({ title, component }: ComponentLibraryPr
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
-            fontFamily: 'Raleway, sans-serif',
+            fontFamily: (component.props?.fontFamily as string) || 'inherit',
             boxSizing: 'border-box',
         };
 

@@ -7,7 +7,6 @@
     flex-direction: column;
     gap: 6px;
     border-radius: inherit;
-    font-family: 'Raleway', sans-serif;
     overflow: hidden;
     min-height: 0;
 }

@@ -25,8 +25,23 @@ const rowJustify = (align: 'left' | 'center' | 'right'): CSSProperties['justifyC
     return 'flex-start';
 };
 
+const bodyVerticalJustify = (align: string): CSSProperties['justifyContent'] => {
+    if (align === 'middle') return 'center';
+    if (align === 'bottom') return 'flex-end';
+    return 'flex-start';
+};
+
 export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
     const contact = normalizeContactCardProps(component.props);
+    const rawProps = component.props ?? {};
+    const textAlign =
+        rawProps.textAlign === 'center' || rawProps.textAlign === 'right'
+            ? rawProps.textAlign
+            : contact.textAlign;
+    const verticalAlign =
+        rawProps.verticalAlign === 'middle' || rawProps.verticalAlign === 'bottom'
+            ? String(rawProps.verticalAlign)
+            : 'top';
     const fontSize = component.fontSize ?? 14;
     const borderRadius = component.borderRadius ?? 8;
     const backgroundColor = component.backgroundColor ?? '#FFFFFF';
@@ -68,7 +83,7 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
     const textStyle: CSSProperties = {
         fontSize,
         color: bodyPalette.text,
-        textAlign: contact.textAlign,
+        textAlign,
     };
 
     const filledPhones = contact.phones.filter((phone) => phone.number.trim());
@@ -89,7 +104,7 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
                     height: '100%',
                 }}
                 styles={{
-                    body: { textAlign: contact.textAlign },
+                    body: { textAlign, display: 'flex', flexDirection: 'column', height: '100%' },
                 }}
                 cover={
                     <div
@@ -112,7 +127,14 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
                     </div>
                 }
             >
-                <div className={styles.body} style={textStyle}>
+                <div
+                    className={styles.body}
+                    style={{
+                        ...textStyle,
+                        justifyContent: bodyVerticalJustify(verticalAlign),
+                        flex: 1,
+                    }}
+                >
                     <Typography.Title
                         level={5}
                         className={styles.name}
@@ -128,7 +150,7 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
                     {contact.organization ? (
                         <div
                             className={styles.metaRow}
-                            style={{ justifyContent: rowJustify(contact.textAlign) }}
+                            style={{ justifyContent: rowJustify(textAlign) }}
                         >
                             <BankOutlined className={styles.metaIcon} style={{ color: bodyPalette.icon }} />
                             <Text style={{ fontSize, color: bodyPalette.accent, fontWeight: 600 }}>
@@ -141,7 +163,7 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
                         <div
                             key={phone.id}
                             className={styles.metaRow}
-                            style={{ justifyContent: rowJustify(contact.textAlign) }}
+                            style={{ justifyContent: rowJustify(textAlign) }}
                         >
                             <PhoneOutlined className={styles.metaIcon} style={{ color: bodyPalette.icon }} />
                             <Text style={{ fontSize, color: bodyPalette.text }}>
@@ -154,7 +176,7 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
                     {contact.email ? (
                         <div
                             className={styles.metaRow}
-                            style={{ justifyContent: rowJustify(contact.textAlign) }}
+                            style={{ justifyContent: rowJustify(textAlign) }}
                         >
                             <MailOutlined className={styles.metaIcon} style={{ color: bodyPalette.icon }} />
                             <Text style={{ fontSize, color: bodyPalette.text }}>{contact.email}</Text>
@@ -167,7 +189,7 @@ export const ContactCardWidget = ({ component }: ContactCardWidgetProps) => {
                             style={{
                                 fontSize,
                                 color: bodyPalette.muted,
-                                textAlign: contact.textAlign,
+                                textAlign,
                             }}
                         >
                             {contact.description}
