@@ -171,3 +171,30 @@ export const ChartMappingSection = ({
         </PropertySection>
     );
 };
+
+interface DataMappingSectionProps {
+    dataSourceId: string;
+    sources: DataSource[];
+    onDataSourceChange: (dataSourceId: string) => void;
+}
+
+export const DataMappingSection = ({
+    dataSourceId,
+    sources,
+    onDataSourceChange,
+}: DataMappingSectionProps) => {
+    const dataSourceOptions = [
+        { value: 'none', label: 'Нет данных (ручное заполнение)' },
+        ...sources.map((src) => ({ value: src.id, label: src.name })),
+    ];
+
+    return (
+        <PropertySection title="Источник данных">
+            <PropertySelect
+                value={dataSourceId}
+                onChange={(event) => onDataSourceChange(event.target.value)}
+                options={dataSourceOptions}
+            />
+        </PropertySection>
+    );
+};

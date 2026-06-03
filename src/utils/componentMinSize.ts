@@ -1,6 +1,13 @@
 import type { EditorComponent } from '@/store/editorStore';
 import type { ComponentDefinition } from '@/store/componentStore';
 import { normalizeContactCardProps } from '@/utils/contactCardDefaults';
+import {
+    calculateFormContentHeight,
+    getFormFieldsFromProps,
+    getFormSearchResizeConstraints,
+    isFormSearchMode,
+} from '@/utils/formLayout';
+import type { FormMode } from '@/types/form';
 
 export interface ComponentMinSize {
     minWidth: number;
@@ -104,13 +111,27 @@ const getChartMinSize = (definition?: ComponentDefinition): ComponentMinSize => 
 
 const getFormMinSize = (component: EditorComponent, definition?: ComponentDefinition): ComponentMinSize => {
     const props = component.props ?? {};
-    const fields = props.fields as unknown[] | undefined;
-    const fieldCount = Array.isArray(fields) ? fields.length : 2;
-    const fontSize = component.fontSize ?? 14;
+    const formMode = (props.formMode as FormMode) || 'default';
+    const layout = String(props.layout ?? 'vertical');
+    const fields = getFormFieldsFromProps(props);
+    if (isFormSearchMode(props)) {
+        const search = getFormSearchResizeConstraints(props);
+        return {
+            minWidth: search.minWidth,
+            minHeight: search.fixedHeight,
+        };
+    }
+
+    const minHeight = calculateFormContentHeight({
+        formMode,
+        fields,
+        layout,
+        width: component.width,
+    });
 
     return {
         minWidth: Math.max(240, (definition?.defaultWidth ?? 400) * 0.6),
-        minHeight: Math.max(100, fieldCount * (fontSize * 2.8 + 16) + 40),
+        minHeight,
     };
 };
 
@@ -151,6 +172,18 @@ export const getComponentMinSize = (
             break;
         case 'form':
             size = getFormMinSize(component, definition);
+            break;
+        case 'filter':
+            size = { minWidth: 200, minHeight: 64 };
+            break;
+        case 'card-deal':
+            size = { minWidth: 240, minHeight: 120 };
+            break;
+        case 'card-summary':
+            size = { minWidth: 240, minHeight: 140 };
+            break;
+        case 'card-kpi':
+            size = { minWidth: 160, minHeight: 90 };
             break;
         default:
             size = getGenericMinSize(component, definition);

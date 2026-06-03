@@ -34,6 +34,9 @@ const ProjectEditorPage = () => {
         clearSaveError,
         updateElementFromSocket,
         deleteElementFromSocket,
+        addPageFromSocket,
+        renamePageFromSocket,
+        deletePageFromSocket,
         pages,
         currentPageId,
     } = useEditorStore();
@@ -68,6 +71,18 @@ const ProjectEditorPage = () => {
             signalrService.onDeleteElement((elementId) => {
                 deleteElementFromSocket(elementId);
             });
+
+            signalrService.onCreatePage((pageId, name) => {
+                addPageFromSocket(pageId, name);
+            });
+
+            signalrService.onRenamePage((pageId, name) => {
+                renamePageFromSocket(pageId, name);
+            });
+
+            signalrService.onDeletePage((pageId) => {
+                deletePageFromSocket(pageId);
+            });
         };
 
         initRealtime();
@@ -75,7 +90,14 @@ const ProjectEditorPage = () => {
         return () => {
             signalrService.stopConnection();
         };
-    }, [isPreview, updateElementFromSocket, deleteElementFromSocket]);
+    }, [
+        isPreview,
+        updateElementFromSocket,
+        deleteElementFromSocket,
+        addPageFromSocket,
+        renamePageFromSocket,
+        deletePageFromSocket,
+    ]);
 
     const handleManualSave = async () => {
         try {

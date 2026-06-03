@@ -6,7 +6,11 @@ import searchIcon from '@/assets/icons/search.svg';
 import { useEditorStore, type EditorComponent } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
-import { COMPONENT_CATEGORIES, getCategoryLabel } from '@/constants/componentCategories';
+import {
+    COMPONENT_CATEGORIES,
+    getCategoryLabel,
+    getComponentTypeLabel,
+} from '@/constants/componentCategories';
 import {
     buildComponentFromDefinition,
     buildComponentFromSnapshot,
@@ -160,9 +164,16 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
         );
         if (type === 'chart') return <div className={styles.mockChart}>📊</div>;
         if (type === 'form') return <div className={styles.mockForm}>📝</div>;
-        if (type === 'card') return <div className={styles.mockCard}>🗂️</div>;
+        if (type === 'filter') return <div className={styles.mockFilter}>🔍</div>;
+        if (type === 'card' || type === 'card-client') return <div className={styles.mockCard}>👤</div>;
+        if (type === 'card-deal') return <div className={styles.mockCard}>💼</div>;
+        if (type === 'card-summary') return <div className={styles.mockCard}>📊</div>;
+        if (type === 'card-kpi') return <div className={styles.mockCard}>📈</div>;
         return <div className={styles.mockCard}>◻</div>;
     };
+
+    const cardComponents = filteredComponents.filter((component) => component.category === 'cards');
+    const mainComponents = filteredComponents.filter((component) => component.category !== 'cards');
 
     const recentItems = recentComponentTypes
         .map((type) => getComponentDefinition(type))
@@ -281,10 +292,38 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
             </div>
 
             <div className={styles.section}>
+                <div className={styles.sectionTitle}>Карточки</div>
+                <div className={styles.grid}>
+                    {cardComponents.length > 0 ? (
+                        cardComponents.map((comp) => (
+                            <div key={`card-${comp.type}`} className={styles.itemWrapper}>
+                                <div
+                                    className={styles.componentBox}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, comp.type)}
+                                    onDragEnd={handleDragEnd}
+                                    onMouseEnter={(e) => showHoverPreview(e, comp.name, comp.type)}
+                                    onMouseLeave={hideHoverPreview}
+                                >
+                                    {renderIcon(comp.type)}
+                                </div>
+                                <div className={styles.itemTexts}>
+                                    <span className={styles.itemLabel}>{comp.name}</span>
+                                    <span className={styles.itemCategory}>{getComponentTypeLabel(comp.type)}</span>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <span className={styles.emptyRecent}>Нет карточек</span>
+                    )}
+                </div>
+            </div>
+
+            <div className={styles.section}>
                 <div className={styles.sectionTitle}>Компоненты</div>
                 <div className={styles.grid}>
-                    {filteredComponents.length > 0 ? (
-                        filteredComponents.map((comp) => (
+                    {mainComponents.length > 0 ? (
+                        mainComponents.map((comp) => (
                             <div key={`all-${comp.type}`} className={styles.itemWrapper}>
                                 <div
                                     className={styles.componentBox}

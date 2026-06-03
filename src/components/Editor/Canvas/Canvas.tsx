@@ -4,12 +4,15 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { buildComponentFromDefinition, buildComponentFromSnapshot } from '@/utils/componentDefaults';
-import { getComponentMinSize } from '@/utils/componentMinSize';
+import { clampComponentAfterResize, getComponentResizeBounds } from '@/utils/formResize';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
-import { ContactCardWidget } from '../CanvasComponents/ContactCardWidget';
+import { CardWidget } from '../CanvasComponents/CardWidget';
 import { ButtonWidget } from '../CanvasComponents/ButtonWidget';
+import { FormWidget } from '../CanvasComponents/FormWidget';
+import { FilterWidget } from '../CanvasComponents/FilterWidget';
+import { isCardComponentType } from '@/utils/componentFilters';
 
 interface CanvasProps {
     components: EditorComponent[];
@@ -22,26 +25,26 @@ interface DraggableData {
 }
 
 export const Canvas = ({ components, readonly = false }: CanvasProps) => {
-     const {
-         updateComponent,
-         selectComponent,
-         selectedComponentId,
-         deleteComponent,
-         showContextMenu,
-         hideContextMenu,
-         contextMenu,
-         addComponent,
-         addComponentFromSnapshot,
-         duplicateComponent,
-         bringToFront,
-         sendToBack,
-         pages,
-         currentPageId,
-         setCurrentPage,
-     } = useEditorStore();
+    const {
+        updateComponent,
+        selectComponent,
+        selectedComponentId,
+        deleteComponent,
+        showContextMenu,
+        hideContextMenu,
+        contextMenu,
+        addComponent,
+        addComponentFromSnapshot,
+        duplicateComponent,
+        bringToFront,
+        sendToBack,
+        pages,
+        currentPageId,
+        setCurrentPage,
+    } = useEditorStore();
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
     const getPreset = useReusablePresetStore((state) => state.getPreset);
-    
+
     const canvasRef = useRef<HTMLDivElement>(null);
 
     const getCanvasBounds = useCallback(() => {
@@ -82,9 +85,14 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         }
 
         const definition = getComponentDefinition(component.type);
-        const { minWidth, minHeight } = getComponentMinSize(component, definition);
-        const newWidth = Math.max(minWidth, parseInt(ref.style.width, 10));
-        const newHeight = Math.max(minHeight, parseInt(ref.style.height, 10));
+        const parsedWidth = parseInt(ref.style.width, 10);
+        const parsedHeight = parseInt(ref.style.height, 10);
+        const { width: newWidth, height: newHeight } = clampComponentAfterResize(
+            component,
+            parsedWidth,
+            parsedHeight,
+            definition
+        );
 
         updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
     }, [components, getComponentDefinition, updateComponent]);
@@ -112,7 +120,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         if (readonly) {
             return;
         }
-        e.preventDefault(); 
+        e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
     }, [readonly]);
 
@@ -195,9 +203,9 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
 
         if (component.type === 'table') {
             return (
-                <TableWidget 
-                    componentId={component.id} 
-                    props={component.props || {}} 
+                <TableWidget
+                    componentId={component.id}
+                    props={component.props || {}}
                 />
             );
         }
@@ -218,15 +226,23 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
             );
         }
 
-        if (component.type === 'card') {
-            return <ContactCardWidget component={component} />;
+        if (component.type === 'form') {
+            return <FormWidget component={component} />;
+        }
+
+        if (component.type === 'filter') {
+            return <FilterWidget component={component} showBindingStatus={!readonly} />;
+        }
+
+        if (isCardComponentType(component.type)) {
+            return <CardWidget component={component} />;
         }
 
         return <div style={commonStyles}>{component.text}</div>;
     };
 
     return (
-        <div 
+        <div
             ref={canvasRef}
             className={styles.canvas}
             onClick={readonly ? undefined : handleCanvasClick}
@@ -236,39 +252,90 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         >
             {components.map((component) => {
                 const definition = getComponentDefinition(component.type);
-                const { minWidth, minHeight } = getComponentMinSize(component, definition);
+                const resizeBounds = getComponentResizeBounds(component, definition);
+                const { minWidth, minHeight, maxWidth, maxHeight, horizontalOnly } = resizeBounds;
+                const componentProps = component.props ?? {};
+                const isVisible = componentProps.visible !== false;
+                const isLocked = Boolean(componentProps.locked);
+                const opacity = typeof componentProps.opacity === 'number' ? componentProps.opacity : 1;
+                const borderWidth = typeof componentProps.borderWidth === 'number' ? componentProps.borderWidth : 0;
+                const borderColor = String(componentProps.borderColor ?? '#E8E8E8');
+                const isSelected = !readonly && selectedComponentId === component.id;
+                const shellStyle: React.CSSProperties = {
+                    borderRadius: `${component.borderRadius ?? 4}px`,
+                    border: borderWidth > 0 ? `${borderWidth}px solid ${borderColor}` : 'none',
+                    outline: isSelected ? '2px solid #1890ff' : 'none',
+                    outlineOffset: 0,
+                };
+
+                if (!isVisible) {
+                    return null;
+                }
 
                 return (
-                <Rnd
-                    key={component.id}
-                    size={{ width: component.width, height: component.height }}
-                    position={{ x: component.x, y: component.y }}
-                    onDragStop={readonly ? undefined : (_, data) => { void handleDragStop(component.id, data); }}
-                    onResizeStop={readonly ? undefined : (_e, _direction, ref, _delta, position) => { void handleResizeStop(component.id, ref, position); }}
-                    onClick={(e: React.MouseEvent) => {
-                        if (readonly) {
-                            return;
+                    <Rnd
+                        key={component.id}
+                        size={{ width: component.width, height: component.height }}
+                        position={{ x: component.x, y: component.y }}
+                        onDragStop={readonly ? undefined : (_, data) => { void handleDragStop(component.id, data); }}
+                        onResizeStop={readonly ? undefined : (_e, _direction, ref, _delta, position) => { void handleResizeStop(component.id, ref, position); }}
+                        onClick={(e: React.MouseEvent) => {
+                            if (readonly) {
+                                return;
+                            }
+                            e.stopPropagation();
+                            selectComponent(component.id);
+                        }}
+                        onContextMenu={readonly ? undefined : (e: React.MouseEvent) => handleContextMenu(e, component.id)}
+                        style={{
+                            boxSizing: 'border-box',
+                            zIndex: component.zIndex || 1,
+                            opacity,
+                        }}
+                        bounds="parent"
+                        minWidth={minWidth}
+                        minHeight={minHeight}
+                        maxWidth={maxWidth}
+                        maxHeight={maxHeight}
+                        resizeHandleStyles={{
+                            right: horizontalOnly
+                                ? {
+                                    cursor: 'ew-resize',
+                                    width: '10px',
+                                    height: '40%',
+                                    top: '30%',
+                                    right: 0,
+                                    background: '#1890ff',
+                                    borderRadius: '4px 0 0 4px',
+                                    border: '2px solid #fff',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                }
+                                : undefined,
+                            bottomRight: !horizontalOnly
+                                ? {
+                                    cursor: 'nwse-resize',
+                                    width: '12px',
+                                    height: '12px',
+                                    background: '#1890ff',
+                                    borderRadius: '50%',
+                                    border: '2px solid #fff',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                }
+                                : undefined,
+                        }}
+                        disableDragging={readonly || isLocked}
+                        enableResizing={
+                            readonly || isLocked
+                                ? false
+                                : horizontalOnly
+                                    ? { right: true }
+                                    : { bottomRight: true }
                         }
-                        e.stopPropagation();
-                        selectComponent(component.id);
-                    }}
-                    onContextMenu={readonly ? undefined : (e: React.MouseEvent) => handleContextMenu(e, component.id)}
-                    style={{
-                        border: !readonly && selectedComponentId === component.id ? '2px solid #1890ff' : '1px solid transparent',
-                        boxSizing: 'border-box',
-                        zIndex: component.zIndex || 1,
-                    }}
-                    bounds="parent"
-                    minWidth={minWidth}
-                    minHeight={minHeight}
-                    resizeHandleStyles={{
-                        bottomRight: { cursor: 'nwse-resize', width: '12px', height: '12px', background: '#1890ff', borderRadius: '50%', border: '2px solid #fff', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }
-                    }}
-                    disableDragging={readonly}
-                    enableResizing={readonly ? false : { bottomRight: true }}
-                >
-                    {renderComponentContent(component)}
-                </Rnd>
+                    >
+                        <div className={styles.componentShell} style={shellStyle}>
+                            {renderComponentContent(component)}
+                        </div>
+                    </Rnd>
                 );
             })}
 

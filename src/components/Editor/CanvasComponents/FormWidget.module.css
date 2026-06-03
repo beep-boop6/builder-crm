@@ -1,0 +1,84 @@
+.formWidget {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: visible;
+    border-radius: inherit;
+    font-family: 'Raleway', sans-serif;
+}
+
+.formWidgetDefault {
+    min-height: 100%;
+    height: auto;
+}
+
+.horizontal {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.formWidgetSearch {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border-radius: inherit;
+    font-family: 'Raleway', sans-serif;
+}
+
+.formWidgetSearchFill {
+    /* backgroundColor задаётся inline из свойств компонента */
+}
+
+.formWidgetSearchTransparent {
+    background: transparent;
+}
+
+.searchBarWrap {
+    width: 100%;
+    flex: 0 1 auto;
+}
+
+.searchInput {
+    width: 100%;
+}
+
+.searchInput :global(.ant-input-search) {
+    width: 100%;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-width: 120px;
+}
+
+.fieldLabel {
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+}
+
+.fullWidth {
+    width: 100%;
+}
+
+.submitRow {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.horizontal .submitRow {
+    width: auto;
+    margin-left: auto;
+}

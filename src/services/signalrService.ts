@@ -85,6 +85,45 @@ class SignalRService {
         return this.saveElementPosition(elementId, projectId);
     }
 
+    public async createPage(pageId: string, name: string): Promise<void> {
+        if (!this.isConnected()) {
+            console.warn("SignalR: createPage пропущен — нет подключения к хабу.");
+            return;
+        }
+
+        try {
+            await this.connection!.invoke("CreatePageAsync", pageId, name);
+        } catch (err) {
+            console.error("SignalR: Не удалось уведомить о создании страницы:", err);
+        }
+    }
+
+    public async renamePage(pageId: string, name: string): Promise<void> {
+        if (!this.isConnected()) {
+            console.warn("SignalR: renamePage пропущен — нет подключения к хабу.");
+            return;
+        }
+
+        try {
+            await this.connection!.invoke("RenamePageAsync", pageId, name);
+        } catch (err) {
+            console.error("SignalR: Не удалось уведомить о переименовании страницы:", err);
+        }
+    }
+
+    public async deletePage(pageId: string): Promise<void> {
+        if (!this.isConnected()) {
+            console.warn("SignalR: deletePage пропущен — нет подключения к хабу.");
+            return;
+        }
+
+        try {
+            await this.connection!.invoke("DeletePageAsync", pageId);
+        } catch (err) {
+            console.error("SignalR: Не удалось уведомить об удалении страницы:", err);
+        }
+    }
+
     // Удаление элемента
     public async deleteElement(elementId: string): Promise<void> {
         if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -112,8 +151,12 @@ class SignalRService {
         this.connection?.on("DeleteAll", callback);
     }
 
-    public onCreatePage(callback: (pageId: string) => void): void {
+    public onCreatePage(callback: (pageId: string, name: string) => void): void {
         this.connection?.on("CreatePage", callback);
+    }
+
+    public onRenamePage(callback: (pageId: string, name: string) => void): void {
+        this.connection?.on("RenamePage", callback);
     }
 
     public onDeletePage(callback: (pageId: string) => void): void {
