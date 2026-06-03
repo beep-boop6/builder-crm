@@ -3,24 +3,36 @@ import { message } from 'antd';
 import { useEditorStore, EditorComponent } from '@/store/editorStore';
 import { useDataStore } from '@/store/dataStore';
 import { useComponentStore } from '@/store/componentStore';
-import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { buildDefaultTableMappings } from '@/utils/dataMapping';
+import { useReusablePresetStore } from '@/store/reusablePresetStore';
+import { isCardComponentType } from '@/utils/componentFilters';
 import { SavePresetModal } from './SavePresetModal';
 import { TablePropertiesView } from './TablePropertiesView';
 import { ChartPropertiesView } from './ChartPropertiesView';
 import { CardPropertiesView } from './CardPropertiesView';
+import { FormPropertiesView } from './FormPropertiesView';
+import { FilterPropertiesView } from './FilterPropertiesView';
+import { CardVariantPropertiesView } from './CardVariantPropertiesView';
 import {
-    AppearanceSection,
+    BehaviorSection,
+    BorderSection,
     LayoutSections,
     PropertyPanelHeader,
-    PropertySection,
-    PropertySelect,
-    PropertyTextInput,
-    TypographySection,
+    TextSection,
 } from './PropertyFields';
-import { getComponentMinSize } from '@/utils/componentMinSize';
-import { getButtonVariantStyle } from '@/utils/buttonDefaults';
+import { getComponentResizeBounds } from '@/utils/formResize';
+import { isFormSearchMode } from '@/utils/formLayout';
+import { getAdaptivePalette } from '@/utils/colorContrast';
 import styles from './PropertiesPanel.module.css';
+
+const getBehaviorProps = (props: Record<string, unknown> | undefined) => ({
+    visible: props?.visible !== false,
+    locked: Boolean(props?.locked),
+    opacity: typeof props?.opacity === 'number' ? props.opacity : 1,
+    borderColor: String(props?.borderColor ?? '#E8E8E8'),
+    borderWidth: typeof props?.borderWidth === 'number' ? props.borderWidth : 0,
+    borderEnabled: typeof props?.borderWidth === 'number' ? props.borderWidth > 0 : false,
+});
 
 export const PropertiesPanel = () => {
     const {
@@ -36,7 +48,6 @@ export const PropertiesPanel = () => {
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
     const savePreset = useReusablePresetStore((state) => state.savePreset);
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-    const pages = useEditorStore((state) => state.pages);
     const selectedComponent = components.find((c) => c.id === selectedComponentId);
 
     if (!selectedComponent) {
@@ -55,40 +66,34 @@ export const PropertiesPanel = () => {
 
     const componentDefinition = getComponentDefinition(selectedComponent.type);
     const componentLabel = componentDefinition?.name ?? selectedComponent.type;
-    const { minWidth, minHeight } = getComponentMinSize(selectedComponent, componentDefinition);
+    const resizeBounds = getComponentResizeBounds(selectedComponent, componentDefinition);
     const defaultPresetCategory = componentDefinition?.category ?? 'custom';
+    const props = selectedComponent.props ?? {};
+    const behavior = getBehaviorProps(props);
+    const isSearchForm = selectedComponent.type === 'form' && isFormSearchMode(props);
 
     const handleUpdate = (key: keyof EditorComponent, value: string | number) => {
+        if (key === 'width' && isSearchForm && typeof resizeBounds.maxWidth === 'number') {
+            const next = Math.min(resizeBounds.maxWidth, Math.max(resizeBounds.minWidth, Number(value)));
+            updateComponent(selectedComponent.id, { width: next });
+            return;
+        }
+        if (key === 'height' && resizeBounds.lockHeight) {
+            return;
+        }
         updateComponent(selectedComponent.id, { [key]: value });
     };
 
-    const handleUpdateProp = (key: string, value: unknown) => {
+    const handleUpdateProp = (patch: Record<string, unknown>) => {
         updateComponentProps(selectedComponent.id, {
-            ...selectedComponent.props,
-            [key]: value,
+            ...props,
+            ...patch,
         });
-    };
-
-    const handleSavePreset = (values: { name: string; category: string }) => {
-        const { id: _id, x: _x, y: _y, ...snapshot } = selectedComponent;
-        savePreset(values.name, snapshot, values.category);
-        message.success('Шаблон сохранён в библиотеке');
-        setIsSaveModalOpen(false);
-    };
-
-    const handleDuplicate = () => {
-        duplicateComponent(selectedComponent.id);
-    };
-
-    const handleDelete = () => {
-        if (window.confirm('Удалить выбранный компонент?')) {
-            deleteComponent(selectedComponent.id);
-            clearSelection();
-        }
     };
 
     const handleDataSourceChange = async (dataSourceId: string, componentType: 'table' | 'chart') => {
         updateComponentProps(selectedComponent.id, {
+            ...props,
             dataSourceId,
             customData: undefined,
             customColumns: undefined,
@@ -111,6 +116,8 @@ export const PropertiesPanel = () => {
 
         if (componentType === 'table') {
             updateComponentProps(selectedComponent.id, {
+                ...selectedComponent.props,
+                dataSourceId,
                 columnMappings: buildDefaultTableMappings(source.data),
             });
             return;
@@ -118,6 +125,8 @@ export const PropertiesPanel = () => {
 
         const fields = source.fields;
         updateComponentProps(selectedComponent.id, {
+            ...selectedComponent.props,
+            dataSourceId,
             chartMapping: {
                 xField: fields[0] ?? '',
                 yField: fields[1] ?? fields[0] ?? '',
@@ -127,84 +136,69 @@ export const PropertiesPanel = () => {
         });
     };
 
-    const renderTypeSpecificSections = () => {
-        const props = selectedComponent.props ?? {};
-
-        if (selectedComponent.type === 'form') {
-            return (
-                <PropertySection title="Контент">
-                    <PropertySelect
-                        value={(props.layout as string) || 'vertical'}
-                        onChange={(event) => handleUpdateProp('layout', event.target.value)}
-                        options={[
-                            { value: 'vertical', label: 'Вертикальная раскладка' },
-                            { value: 'horizontal', label: 'Горизонтальная раскладка' },
-                        ]}
-                    />
-                </PropertySection>
-            );
-        }
-
-        if (selectedComponent.type === 'button') {
-            const pageOptions = [
-                { value: '', label: 'Не выбрана' },
-                ...[...pages]
-                    .sort((a, b) => a.order - b.order)
-                    .map((page) => ({ value: page.id, label: page.title })),
-            ];
-
-            return (
-                <>
-                    <PropertySection title="Контент">
-                        <PropertyTextInput
-                            value={selectedComponent.text}
-                            placeholder="Текст кнопки"
-                            onChange={(event) => handleUpdate('text', event.target.value)}
-                        />
-                    </PropertySection>
-                    <PropertySection title="Действие">
-                        <PropertySelect
-                            value={(props.targetPageId as string) || ''}
-                            onChange={(event) => handleUpdateProp('targetPageId', event.target.value)}
-                            options={pageOptions}
-                        />
-                    </PropertySection>
-                    <PropertySection title="Стиль">
-                        <PropertySelect
-                            value={(props.variant as string) || 'primary'}
-                            onChange={(event) => {
-                                const variant = event.target.value;
-                                const variantStyle = getButtonVariantStyle(variant);
-                                updateComponentProps(selectedComponent.id, {
-                                    ...selectedComponent.props,
-                                    variant,
-                                });
-                                updateComponent(selectedComponent.id, {
-                                    backgroundColor: variantStyle.backgroundColor,
-                                    color: variantStyle.color,
-                                });
-                            }}
-                            options={[
-                                { value: 'primary', label: 'Залитая' },
-                                { value: 'default', label: 'Обычная' },
-                                { value: 'dashed', label: 'Пунктирная' },
-                            ]}
-                        />
-                    </PropertySection>
-                </>
-            );
-        }
-
-        return (
-            <PropertySection title="Контент">
-                <PropertyTextInput
-                    value={selectedComponent.text}
-                    placeholder="Текст компонента"
-                    onChange={(event) => handleUpdate('text', event.target.value)}
-                />
-            </PropertySection>
-        );
+    const handleSavePreset = (values: { name: string; category: string }) => {
+        const { id: _id, x: _x, y: _y, ...snapshot } = selectedComponent;
+        savePreset(values.name, snapshot, values.category);
+        message.success('Шаблон сохранён в библиотеке');
+        setIsSaveModalOpen(false);
     };
+
+    const renderCommonSections = () => (
+        <>
+            <LayoutSections
+                component={selectedComponent}
+                onUpdate={handleUpdate}
+                minWidth={resizeBounds.minWidth}
+                minHeight={resizeBounds.minHeight}
+                maxWidth={resizeBounds.maxWidth}
+                maxHeight={resizeBounds.maxHeight}
+                lockHeight={resizeBounds.lockHeight}
+                opacity={behavior.opacity}
+                textAlign={(props.textAlign as string) || 'left'}
+                verticalAlign={(props.verticalAlign as string) || 'top'}
+                onOpacityChange={(value) => handleUpdateProp({ opacity: value })}
+                onTextAlignChange={(value) => handleUpdateProp({ textAlign: value })}
+                onVerticalAlignChange={(value) => handleUpdateProp({ verticalAlign: value })}
+            />
+            <BorderSection
+                enabled={behavior.borderEnabled}
+                borderColor={behavior.borderColor}
+                borderWidth={behavior.borderWidth}
+                backgroundColor={selectedComponent.backgroundColor || '#FFFFFF'}
+                borderRadius={selectedComponent.borderRadius ?? 4}
+                onEnabledChange={(enabled) =>
+                    handleUpdateProp({
+                        borderWidth: enabled ? (behavior.borderWidth > 0 ? behavior.borderWidth : 1) : 0,
+                    })
+                }
+                onBorderColorChange={(value) => handleUpdateProp({ borderColor: value })}
+                onBorderWidthChange={(value) => handleUpdateProp({ borderWidth: value })}
+                onBackgroundColorChange={(value) => {
+                    handleUpdate('backgroundColor', value);
+                    if (selectedComponent.type === 'card') {
+                        handleUpdate('color', getAdaptivePalette(value).text);
+                    }
+                }}
+                onBorderRadiusChange={(value) => handleUpdate('borderRadius', value)}
+            />
+            <TextSection
+                fontFamily={(props.fontFamily as string) || 'Raleway'}
+                fontSize={selectedComponent.fontSize ?? 14}
+                fontWeight={selectedComponent.fontWeight ?? 400}
+                color={selectedComponent.color || '#000000'}
+                onFontFamilyChange={(value) => handleUpdateProp({ fontFamily: value })}
+                onFontSizeChange={(value) => handleUpdate('fontSize', value)}
+                onFontWeightChange={(value) => updateComponent(selectedComponent.id, { fontWeight: value })}
+                onColorChange={(value) => handleUpdate('color', value)}
+            />
+            <BehaviorSection
+                visible={behavior.visible}
+                locked={behavior.locked}
+                onVisibleChange={(value) => handleUpdateProp({ visible: value })}
+                onLockedChange={(value) => handleUpdateProp({ locked: value })}
+            />
+        </>
+    );
 
     const renderPanelBody = () => {
         if (selectedComponent.type === 'table') {
@@ -212,7 +206,7 @@ export const PropertiesPanel = () => {
                 <TablePropertiesView
                     component={selectedComponent}
                     onUpdate={handleUpdate}
-                    onUpdateProps={(props) => updateComponentProps(selectedComponent.id, props)}
+                    onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
                     onDataSourceChange={(id) => handleDataSourceChange(id, 'table')}
                 />
             );
@@ -223,7 +217,7 @@ export const PropertiesPanel = () => {
                 <ChartPropertiesView
                     component={selectedComponent}
                     onUpdate={handleUpdate}
-                    onUpdateProps={(props) => updateComponentProps(selectedComponent.id, props)}
+                    onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
                     onDataSourceChange={(id) => handleDataSourceChange(id, 'chart')}
                 />
             );
@@ -231,37 +225,54 @@ export const PropertiesPanel = () => {
 
         if (selectedComponent.type === 'card') {
             return (
-                <CardPropertiesView
-                    component={selectedComponent}
-                    onUpdate={handleUpdate}
-                    onUpdateProps={(props) => updateComponentProps(selectedComponent.id, props)}
-                />
+                <>
+                    <CardPropertiesView
+                        component={selectedComponent}
+                        onUpdate={handleUpdate}
+                        onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
+                    />
+                    {renderCommonSections()}
+                </>
             );
         }
 
-        return (
-            <>
-                {renderTypeSpecificSections()}
-                <LayoutSections
-                    component={selectedComponent}
-                    onUpdate={handleUpdate}
-                    minWidth={minWidth}
-                    minHeight={minHeight}
-                />
-                <AppearanceSection
-                    borderRadius={selectedComponent.borderRadius ?? 4}
-                    backgroundColor={selectedComponent.backgroundColor || '#FFFFFF'}
-                    onBorderRadiusChange={(value) => handleUpdate('borderRadius', value)}
-                    onBackgroundColorChange={(value) => handleUpdate('backgroundColor', value)}
-                />
-                <TypographySection
-                    fontSize={selectedComponent.fontSize ?? 14}
-                    color={selectedComponent.color || '#333333'}
-                    onFontSizeChange={(value) => handleUpdate('fontSize', value)}
-                    onColorChange={(value) => handleUpdate('color', value)}
-                />
-            </>
-        );
+        if (isCardComponentType(selectedComponent.type) && selectedComponent.type !== 'card') {
+            return (
+                <>
+                    <CardVariantPropertiesView
+                        component={selectedComponent}
+                        onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
+                    />
+                    {renderCommonSections()}
+                </>
+            );
+        }
+
+        if (selectedComponent.type === 'form') {
+            return (
+                <>
+                    <FormPropertiesView
+                        component={selectedComponent}
+                        onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
+                    />
+                    {renderCommonSections()}
+                </>
+            );
+        }
+
+        if (selectedComponent.type === 'filter') {
+            return (
+                <>
+                    <FilterPropertiesView
+                        component={selectedComponent}
+                        onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
+                    />
+                    {renderCommonSections()}
+                </>
+            );
+        }
+
+        return renderCommonSections();
     };
 
     return (
@@ -270,12 +281,15 @@ export const PropertiesPanel = () => {
                 subtitle={componentLabel}
                 showToolbar
                 onSavePreset={() => setIsSaveModalOpen(true)}
-                onDuplicate={handleDuplicate}
-                onDelete={handleDelete}
+                onDuplicate={() => duplicateComponent(selectedComponent.id)}
+                onDelete={() => {
+                    if (window.confirm('Удалить выбранный компонент?')) {
+                        deleteComponent(selectedComponent.id);
+                        clearSelection();
+                    }
+                }}
             />
-            <div className={styles.content}>
-                {renderPanelBody()}
-            </div>
+            <div className={styles.content}>{renderPanelBody()}</div>
             <SavePresetModal
                 open={isSaveModalOpen}
                 defaultName={selectedComponent.text || selectedComponent.type}

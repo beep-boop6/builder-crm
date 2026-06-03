@@ -2,8 +2,11 @@ import type { CSSProperties } from 'react';
 import type { EditorComponent } from '@/store/editorStore';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
-import { ContactCardWidget } from '../CanvasComponents/ContactCardWidget';
+import { CardWidget } from '../CanvasComponents/CardWidget';
 import { ButtonWidget } from '../CanvasComponents/ButtonWidget';
+import { FormWidget } from '../CanvasComponents/FormWidget';
+import { FilterWidget } from '../CanvasComponents/FilterWidget';
+import { isCardComponentType } from '@/utils/componentFilters';
 import styles from './ComponentLibraryPreview.module.css';
 
 const PREVIEW_MAX_WIDTH = 260;
@@ -73,18 +76,16 @@ export const ComponentLibraryPreview = ({ title, component }: ComponentLibraryPr
             );
         }
 
-        if (component.type === 'card') {
-            return <ContactCardWidget component={component} />;
+        if (component.type === 'form') {
+            return <FormWidget component={component} />;
         }
 
-        if (component.type === 'form') {
-            return (
-                <div className={styles.formPreview}>
-                    <div className={styles.formField} />
-                    <div className={styles.formField} />
-                    <div className={styles.formFieldShort} />
-                </div>
-            );
+        if (component.type === 'filter') {
+            return <FilterWidget component={component} />;
+        }
+
+        if (isCardComponentType(component.type)) {
+            return <CardWidget component={component} />;
         }
 
         return <div style={commonStyles}>{component.text}</div>;

@@ -6,6 +6,7 @@ import { signalrService } from '../services/signalrService';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 import { Page } from '../types';
 import { generateGuid } from '../utils';
+import { titleToRoute } from '@/utils/pageRoute';
 import { buildComponentFromSnapshot, type ComponentSnapshot } from '@/utils/componentDefaults';
 import { sanitizeEditorComponent } from '@/utils/sanitizeProjectStorage';
 import { clampComponentSize } from '@/utils/componentMinSize';
@@ -105,6 +106,9 @@ interface EditorState {
     // ЭКШЕНЫ СОКЕТОВ (прием данных от сервера)
     updateElementFromSocket: (id: string, json: string) => void;
     deleteElementFromSocket: (id: string) => void;
+    addPageFromSocket: (pageId: string, name: string) => void;
+    renamePageFromSocket: (pageId: string, name: string) => void;
+    deletePageFromSocket: (pageId: string) => void;
     
     addPage: (title: string, route: string) => void;
     updatePage: (pageId: string, updates: Partial<Pick<Page, 'title' | 'route'>>) => void;
@@ -319,12 +323,71 @@ export const useEditorStore = create<EditorState>()(
                 set((state) => ({ components: state.components.filter(c => c.id !== id) }));
             },
 
+            addPageFromSocket: (pageId, name) => {
+                set((state) => {
+                    if (state.pages.some((page) => page.id === pageId)) {
+                        return state;
+                    }
+
+                    return {
+                        pages: [
+                            ...state.pages,
+                            {
+                                id: pageId,
+                                title: name,
+                                route: titleToRoute(name),
+                                components: [],
+                                order: state.pages.length + 1,
+                            },
+                        ],
+                    };
+                });
+            },
+
+            renamePageFromSocket: (pageId, name) => {
+                set((state) => ({
+                    pages: state.pages.map((page) =>
+                        page.id === pageId
+                            ? { ...page, title: name, route: titleToRoute(name) }
+                            : page
+                    ),
+                }));
+            },
+
+            deletePageFromSocket: (pageId) => {
+                const state = get();
+                if (state.pages.length <= 1) {
+                    return;
+                }
+
+                const updatedPages = state.pages.filter((page) => page.id !== pageId);
+                if (updatedPages.length === 0) {
+                    return;
+                }
+
+                const isDeletingCurrent = state.currentPageId === pageId;
+                const nextPage = isDeletingCurrent
+                    ? updatedPages[0]
+                    : updatedPages.find((page) => page.id === state.currentPageId) ?? updatedPages[0];
+
+                set({
+                    pages: updatedPages,
+                    currentPageId: isDeletingCurrent ? nextPage.id : state.currentPageId,
+                    components: isDeletingCurrent ? nextPage.components : state.components,
+                    selectedComponentId: null,
+                });
+            },
+
             // Страницы и инициализация
             addPage: (title, route) => {
-                set((state) => {
-                    const newPage: Page = { id: generateGuid(), title, route, components: [], order: state.pages.length + 1 };
-                    return { pages: [...state.pages, newPage] };
-                });
+                const pageId = generateGuid();
+                set((state) => ({
+                    pages: [
+                        ...state.pages,
+                        { id: pageId, title, route, components: [], order: state.pages.length + 1 },
+                    ],
+                }));
+                void signalrService.createPage(pageId, title);
                 scheduleSaveToProject(get);
             },
 
@@ -344,6 +407,10 @@ export const useEditorStore = create<EditorState>()(
                         };
                     }),
                 }));
+
+                if (nextTitle) {
+                    void signalrService.renamePage(pageId, nextTitle);
+                }
                 scheduleSaveToProject(get);
             },
 
@@ -379,6 +446,7 @@ export const useEditorStore = create<EditorState>()(
                     past: [],
                     future: [],
                 });
+                void signalrService.deletePage(pageId);
                 scheduleSaveToProject(get);
             },
 

@@ -1,0 +1,63 @@
+.filterWidget {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-radius: inherit;
+    font-family: 'Raleway', sans-serif;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.headerRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.2;
+}
+
+.linkedBadge {
+    font-size: 10px;
+    color: #1677ff;
+    white-space: nowrap;
+}
+
+.unlinkedBadge {
+    font-size: 10px;
+    color: #fa8c16;
+    white-space: nowrap;
+}
+
+.control {
+    width: 100%;
+    max-width: 100%;
+    flex-shrink: 0;
+}
+
+.control :global(.ant-select-selector) {
+    max-width: 100%;
+}
+
+.dateRow {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.rangeHint {
+    font-size: 10px;
+    color: #888;
+    flex-shrink: 0;
+}

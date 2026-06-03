@@ -3,7 +3,10 @@ import { useDataStore } from '../../../store/dataStore';
 import { useEditorStore } from '../../../store/editorStore';
 import { applyTableMapping } from '@/utils/dataMapping';
 import { validateTableMapping } from '@/utils/dataValidation';
+import { applyFiltersToRows, collectFiltersForTarget } from '@/utils/componentFilters';
+import { TABLE_DEMO_COLUMNS, TABLE_DEMO_ROWS } from '@/utils/tableDemoData';
 import type { TableColumnMapping } from '@/types/data';
+import type { DataRow } from '@/utils/dataValidation';
 import type { ComponentDataProps } from '@/types/data';
 import styles from './TableWidget.module.css';
 
@@ -16,6 +19,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
     const { sources, loadData } = useDataStore();
     const updateComponentProps = useEditorStore((state) => state.updateComponentProps);
     const selectedComponentId = useEditorStore((state) => state.selectedComponentId);
+    const canvasComponents = useEditorStore((state) => state.components);
     const isSelected = selectedComponentId === componentId;
 
     const dataSourceId = props.dataSourceId;
@@ -27,22 +31,29 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         }
     }, [dataSourceId, source, loadData]);
 
+    const activeFilters = useMemo(
+        () => collectFiltersForTarget(canvasComponents, componentId),
+        [canvasComponents, componentId]
+    );
+
     const mapped = useMemo(() => {
         if (props.customData && props.customColumns) {
+            const filteredData = applyFiltersToRows(
+                props.customData as DataRow[],
+                activeFilters
+            );
             return {
                 columns: props.customColumns,
-                data: props.customData,
+                data: filteredData,
                 validationError: null as string | null,
             };
         }
 
         if (!source?.data || source.data.length === 0) {
+            const filteredDemo = applyFiltersToRows(TABLE_DEMO_ROWS, activeFilters);
             return {
-                columns: [{ id: 'col1', title: 'Колонка 1' }, { id: 'col2', title: 'Колонка 2' }],
-                data: [
-                    { id: 'row1', col1: 'Данные', col2: 'Данные' },
-                    { id: 'row2', col1: 'Данные', col2: 'Данные' },
-                ],
+                columns: TABLE_DEMO_COLUMNS,
+                data: filteredDemo,
                 validationError: null as string | null,
             };
         }
@@ -57,12 +68,13 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
             };
         }
 
-        const applied = applyTableMapping(source.data, mappings);
+        const filteredRows = applyFiltersToRows(source.data, activeFilters);
+        const applied = applyTableMapping(filteredRows, mappings);
         return {
             ...applied,
             validationError: null as string | null,
         };
-    }, [props.customColumns, props.customData, props.columnMappings, source?.data]);
+    }, [activeFilters, componentId, props.customColumns, props.customData, props.columnMappings, source?.data]);
 
     const { columns, data, validationError } = mapped;
 
@@ -122,6 +134,14 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         return <div style={{ color: '#d48806' }}>Маппинг: {validationError}</div>;
     }
 
+    const textAlign = (props.textAlign as string) || 'left';
+    const verticalAlign = (props.verticalAlign as string) || 'top';
+
+    const cellStyle: React.CSSProperties = {
+        textAlign: textAlign as React.CSSProperties['textAlign'],
+        verticalAlign: verticalAlign as React.CSSProperties['verticalAlign'],
+    };
+
     const appliedStyles = {
         ...(props.style as Record<string, unknown>),
         width: (props.style as { width?: string })?.width || '100%',
@@ -134,9 +154,10 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                 <thead>
                     <tr>
                         {columns.map((col: { id: string; title: string }) => (
-                            <th key={col.id}>
+                            <th key={col.id} style={cellStyle}>
                                 <input
                                     className={styles.editInput}
+                                    style={{ textAlign: cellStyle.textAlign }}
                                     value={col.title}
                                     onChange={(e) => handleHeaderChange(col.id, e.target.value)}
                                     placeholder="Заголовок"
@@ -163,9 +184,10 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                     {data.map((row: Record<string, unknown>) => (
                         <tr key={String(row.id)}>
                             {columns.map((col: { id: string }) => (
-                                <td key={`${row.id}-${col.id}`}>
+                                <td key={`${row.id}-${col.id}`} style={cellStyle}>
                                     <input
                                         className={styles.editInput}
+                                        style={{ textAlign: cellStyle.textAlign }}
                                         value={String(row[col.id] ?? '')}
                                         onChange={(e) => handleCellChange(String(row.id), col.id, e.target.value)}
                                     />

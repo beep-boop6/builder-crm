@@ -8,20 +8,14 @@ import {
     DEFAULT_CONTACT_CARD_PROPS,
     normalizeContactCardProps,
 } from '@/utils/contactCardDefaults';
-import { getAdaptivePalette } from '@/utils/colorContrast';
-import { getComponentMinSize } from '@/utils/componentMinSize';
-import { useComponentStore } from '@/store/componentStore';
 import { compressImageFile } from '@/utils/imageCompress';
 import { deleteImage, saveImageBlob } from '@/services/imageStorage';
 import {
-    AppearanceSection,
-    LayoutSections,
     PropertyButton,
     PropertyColorInput,
     PropertySection,
     PropertySelect,
     PropertyTextInput,
-    TypographySection,
 } from './PropertyFields';
 import styles from './CardPropertiesView.module.css';
 
@@ -39,9 +33,6 @@ export const CardPropertiesView = ({
     const photoInputRef = useRef<HTMLInputElement>(null);
     const coverInputRef = useRef<HTMLInputElement>(null);
     const contact = normalizeContactCardProps(component.props);
-    const componentDefinition = useComponentStore.getState().getComponentDefinition(component.type);
-    const { minWidth, minHeight } = getComponentMinSize(component, componentDefinition);
-
     const patchContact = (patch: Partial<ContactCardProps>) => {
         const next = { ...contact, ...patch };
         onUpdateProps(next);
@@ -138,12 +129,6 @@ export const CardPropertiesView = ({
     const handleClearField = (field: keyof Pick<ContactCardProps, 'fullName' | 'organization' | 'email' | 'description'>) => {
         const empty = field === 'fullName' ? DEFAULT_CONTACT_CARD_PROPS.fullName : '';
         patchContact({ [field]: empty });
-    };
-
-    const handleBackgroundColorChange = (value: string) => {
-        const palette = getAdaptivePalette(value);
-        onUpdate('backgroundColor', value);
-        onUpdate('color', palette.text);
     };
 
     return (
@@ -290,40 +275,6 @@ export const CardPropertiesView = ({
                 ))}
             </PropertySection>
 
-            <PropertySection title="Текст">
-                <PropertySelect
-                    value={contact.textAlign}
-                    onChange={(event) =>
-                        patchContact({
-                            textAlign: event.target.value as ContactCardProps['textAlign'],
-                        })
-                    }
-                    options={[
-                        { value: 'left', label: 'По левому краю' },
-                        { value: 'center', label: 'По центру' },
-                        { value: 'right', label: 'По правому краю' },
-                    ]}
-                />
-            </PropertySection>
-
-            <LayoutSections
-                component={component}
-                onUpdate={onUpdate}
-                minWidth={minWidth}
-                minHeight={minHeight}
-            />
-            <AppearanceSection
-                borderRadius={component.borderRadius ?? 8}
-                backgroundColor={component.backgroundColor || '#FFFFFF'}
-                onBorderRadiusChange={(value) => onUpdate('borderRadius', value)}
-                onBackgroundColorChange={handleBackgroundColorChange}
-            />
-            <TypographySection
-                fontSize={component.fontSize ?? 14}
-                color={component.color || getAdaptivePalette(component.backgroundColor || '#FFFFFF').text}
-                onFontSizeChange={(value) => onUpdate('fontSize', value)}
-                onColorChange={(value) => onUpdate('color', value)}
-            />
         </>
     );
 };

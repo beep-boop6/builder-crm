@@ -48,6 +48,16 @@ const DEFAULT_SOURCES: DataSource[] = [
         isLoading: false,
         error: null,
     },
+    {
+        id: 'src-deals',
+        name: 'Сделки (CRM)',
+        type: 'mock',
+        endpoint: 'deals',
+        data: null,
+        fields: [],
+        isLoading: false,
+        error: null,
+    },
 ];
 
 export const useDataStore = create<DataState>()(

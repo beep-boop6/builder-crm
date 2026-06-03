@@ -2,6 +2,8 @@ import type { ComponentDefinition } from '@/store/componentStore';
 import type { EditorComponent } from '@/store/editorStore';
 import { generateGuid } from '@/utils';
 import { DEFAULT_CONTACT_CARD_PROPS } from '@/utils/contactCardDefaults';
+import { isCardComponentType } from '@/utils/componentFilters';
+import { resolveFormHeight } from '@/utils/formLayout';
 
 export type ComponentSnapshot = Omit<EditorComponent, 'id' | 'x' | 'y'>;
 
@@ -28,32 +30,54 @@ export const buildComponentFromDefinition = (
         };
     }
 
-    const cardProps =
-        type === 'card'
-            ? {
-                  ...structuredClone(DEFAULT_CONTACT_CARD_PROPS),
-                  phones: DEFAULT_CONTACT_CARD_PROPS.phones.map((phone) => ({
-                      ...phone,
-                      id: generateGuid(),
-                  })),
-              }
-            : structuredClone(definition.defaultProps);
+    const isCard = isCardComponentType(type);
+    const cardProps = type === 'card'
+        ? {
+              ...structuredClone(DEFAULT_CONTACT_CARD_PROPS),
+              phones: DEFAULT_CONTACT_CARD_PROPS.phones.map((phone) => ({
+                  ...phone,
+                  id: generateGuid(),
+              })),
+          }
+        : structuredClone(definition.defaultProps);
+
+    const defaultText = type === 'card'
+        ? DEFAULT_CONTACT_CARD_PROPS.fullName
+        : type === 'filter'
+            ? String(definition.defaultProps.label ?? 'Фильтр')
+            : String(definition.defaultProps.text ?? definition.name);
+
+    const baseHeight = type === 'form'
+        ? resolveFormHeight(
+            {
+                type,
+                width: definition.defaultWidth,
+                height: definition.defaultHeight,
+                props: cardProps,
+            },
+            definition
+        )
+        : definition.defaultHeight;
 
     return {
         type,
         x: position.x,
         y: position.y,
         width: definition.defaultWidth,
-        height: definition.defaultHeight,
-        text:
-            type === 'card'
-                ? DEFAULT_CONTACT_CARD_PROPS.fullName
-                : String(definition.defaultProps.text ?? definition.name),
+        height: baseHeight,
+        text: defaultText,
         backgroundColor:
-            type === 'table' || type === 'chart' || type === 'card' ? '#ffffff' : '#155DA4',
-        color: type === 'table' ? '#000000' : type === 'chart' || type === 'card' ? '#333333' : '#ffffff',
-        borderRadius: type === 'button' || type === 'card' ? 8 : 4,
-        props: cardProps,
+            type === 'table' || type === 'chart' || isCard || type === 'form' || type === 'filter'
+                ? '#ffffff'
+                : '#155DA4',
+        color:
+            type === 'table'
+                ? '#000000'
+                : type === 'chart' || isCard || type === 'form' || type === 'filter'
+                    ? '#333333'
+                    : '#ffffff',
+        borderRadius: type === 'button' || isCard ? 8 : 4,
+        props: isCard ? cardProps : structuredClone(definition.defaultProps),
     };
 };
 

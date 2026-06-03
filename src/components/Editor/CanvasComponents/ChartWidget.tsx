@@ -2,6 +2,8 @@ import React, { useEffect, useMemo } from 'react';
 import { useDataStore } from '../../../store/dataStore';
 import { applyChartMapping } from '@/utils/dataMapping';
 import { validateChartMapping } from '@/utils/dataValidation';
+import { applyFiltersToRows, collectFiltersForTarget } from '@/utils/componentFilters';
+import { useEditorStore } from '@/store/editorStore';
 import type { ChartFieldMapping, ComponentDataProps } from '@/types/data';
 import {
     Chart as ChartJS,
@@ -60,6 +62,7 @@ const normalizeHex = (value: string | undefined, fallback: string): string => {
 
 export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fillColor }) => {
     const { sources, loadData } = useDataStore();
+    const canvasComponents = useEditorStore((state) => state.components);
 
     const dataSourceId = props.dataSourceId;
     const source = sources.find((item) => item.id === dataSourceId);
@@ -86,7 +89,12 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             };
         }
 
-        const validation = validateChartMapping(source.data, chartMapping);
+        const filteredRows = applyFiltersToRows(
+            source.data,
+            collectFiltersForTarget(canvasComponents, componentId)
+        );
+
+        const validation = validateChartMapping(filteredRows, chartMapping);
         if (!validation.valid) {
             return {
                 labels: [],
@@ -95,7 +103,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             };
         }
 
-        const mapped = applyChartMapping(source.data, chartMapping, {
+        const mapped = applyChartMapping(filteredRows, chartMapping, {
             xField: props.xAxisKey as string | undefined,
             yField: props.yAxisKey as string | undefined,
         });
@@ -105,7 +113,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             values: mapped.values,
             validationError: null as string | null,
         };
-    }, [chartMapping, isConfigured, props.xAxisKey, props.yAxisKey, source?.data]);
+    }, [canvasComponents, chartMapping, componentId, isConfigured, props.xAxisKey, props.yAxisKey, source?.data]);
 
     const chartType = (props.chartType as string) || 'bar';
     const seriesColor = normalizeHex(

@@ -82,20 +82,54 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
         defaultWidth: 400,
         defaultHeight: 300,
         defaultProps: {
+            formMode: 'default',
             fields: [
-                {name: 'field1', label: 'Поле 1', type: 'text', required: false},
-                {name: 'field2', label: 'Поле 2', type: 'text', required: false},
+                { name: 'text', label: 'Текст', type: 'text', placeholder: 'Введите текст' },
+                { name: 'number', label: 'Число', type: 'number', placeholder: '0' },
+                { name: 'date', label: 'Дата', type: 'date' },
+                {
+                    name: 'select',
+                    label: 'Список',
+                    type: 'select',
+                    options: ['Вариант 1', 'Вариант 2', 'Вариант 3'],
+                },
             ],
             layout: 'vertical',
+            submitLabel: 'Отправить',
+            formValues: {},
+            appliedFormValues: {},
+            targetComponentIds: [],
+            dataSourceId: 'none',
+            searchFieldKey: 'text',
+            searchValue: '',
+            searchBackground: 'fill',
+            searchBarMaxWidth: 480,
         },
-        editableFields: ['fields', 'layout', 'width', 'height', 'x', 'y'],
+        editableFields: ['fields', 'layout', 'formMode', 'width', 'height', 'x', 'y'],
+        isBuiltIn: true,
+        enabled: true,
+    },
+    filter: {
+        type: 'filter',
+        name: 'Фильтр',
+        category: 'filters',
+        defaultWidth: 280,
+        defaultHeight: 72,
+        defaultProps: {
+            filterType: 'status',
+            fieldKey: 'status',
+            label: 'Статус',
+            value: '',
+            targetComponentIds: [],
+        },
+        editableFields: ['filterType', 'fieldKey', 'label', 'value', 'targetComponentIds'],
         isBuiltIn: true,
         enabled: true,
     },
     card: {
         type: 'card',
         name: 'Карточка',
-        category: 'layout',
+        category: 'cards',
         defaultWidth: 320,
         defaultHeight: 400,
         defaultProps: {
@@ -131,16 +165,60 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
         isBuiltIn: true,
         enabled: true,
     },
+    'card-deal': {
+        type: 'card-deal',
+        name: 'Карточка сделки',
+        category: 'cards',
+        defaultWidth: 300,
+        defaultHeight: 160,
+        defaultProps: {
+            dealTitle: 'Новая сделка',
+            clientName: 'ООО «Пример»',
+            dealStatus: 'Переговоры',
+            dealAmount: '150 000',
+            dataSourceId: 'none',
+        },
+        editableFields: ['dealTitle', 'clientName', 'dealStatus', 'dealAmount'],
+        isBuiltIn: true,
+        enabled: true,
+    },
+    'card-summary': {
+        type: 'card-summary',
+        name: 'Карточка итогов',
+        category: 'cards',
+        defaultWidth: 280,
+        defaultHeight: 180,
+        defaultProps: {
+            totalIncome: '1 250 000',
+            totalExpense: '820 000',
+            profit: '430 000',
+            dataSourceId: 'none',
+        },
+        editableFields: ['totalIncome', 'totalExpense', 'profit'],
+        isBuiltIn: true,
+        enabled: true,
+    },
+    'card-kpi': {
+        type: 'card-kpi',
+        name: 'KPI-карточка',
+        category: 'cards',
+        defaultWidth: 200,
+        defaultHeight: 120,
+        defaultProps: {
+            kpiLabel: 'Активные клиенты',
+            kpiValue: '128',
+            dataSourceId: 'none',
+        },
+        editableFields: ['kpiLabel', 'kpiValue'],
+        isBuiltIn: true,
+        enabled: true,
+    },
 };
 
 const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
     const merged: Record<string, ComponentDefinition> = { ...DEFAULT_LIBRARY };
 
     Object.values(library).forEach((definition) => {
-        if (definition.type === 'filter') {
-            return;
-        }
-
         const existing = merged[definition.type];
         const isBuiltIn = existing?.isBuiltIn ?? definition.isBuiltIn ?? false;
 
@@ -148,13 +226,13 @@ const mergeWithDefaults = (library: Record<string, ComponentDefinition>) => {
             ...(existing ?? {}),
             ...definition,
             name: isBuiltIn && existing ? existing.name : (definition.name ?? existing?.name ?? definition.type),
-            category: definition.category ?? existing?.category ?? 'custom',
+            category: isBuiltIn && existing
+                ? existing.category
+                : (definition.category ?? existing?.category ?? 'custom'),
             isBuiltIn,
             enabled: definition.enabled ?? existing?.enabled ?? true,
         };
     });
-
-    delete merged.filter;
 
     return merged;
 };

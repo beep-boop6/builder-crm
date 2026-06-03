@@ -26,9 +26,26 @@ const MOCK_SALES: SalesData[] = [
     { month: 'Мар', amount: 1500 },
 ];
 
+export interface DealData {
+    id: string;
+    title: string;
+    client: string;
+    status: 'lead' | 'negotiation' | 'deal' | 'closed';
+    amount: number;
+}
+
+const MOCK_DEALS: DealData[] = [
+    { id: '1', title: 'Поставка оборудования', client: 'ООО Альфа', status: 'lead', amount: 120000 },
+    { id: '2', title: 'Лицензии ПО', client: 'ИП Бета', status: 'negotiation', amount: 85000 },
+    { id: '3', title: 'Сервисный контракт', client: 'ЗАО Гамма', status: 'deal', amount: 240000 },
+    { id: '4', title: 'Консалтинг', client: 'ООО Дельта', status: 'closed', amount: 45000 },
+    { id: '5', title: 'Интеграция CRM', client: 'ООО Эпсилон', status: 'lead', amount: 310000 },
+];
+
 const MOCK_REGISTRY: Record<string, DataRow[]> = {
     users: MOCK_USERS as unknown as DataRow[],
     sales: MOCK_SALES as unknown as DataRow[],
+    deals: MOCK_DEALS as unknown as DataRow[],
 };
 
 export const dataService = {

@@ -1,8 +1,7 @@
-/* Основной контейнер панели */
+/* ───────────── Main panel container ───────────── */
 .propertiesPanel {
     width: 100%;
     height: 100%;
-    margin: 0;
     box-sizing: border-box;
     background: #FFFFFF;
     border: 1px solid #e0e0e0;
@@ -14,27 +13,30 @@
     overflow: hidden;
 }
 
+/* ───────────── Panel header ───────────── */
 .panelHeader {
-    padding: 20px 20px 12px;
+    padding: 16px 16px 12px;
     border-bottom: 1px solid #eee;
     flex-shrink: 0;
 }
 
-.headerMain {
+.headerRow {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .headerToolbar {
     display: flex;
-    gap: 8px;
-    margin-top: 8px;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .headerIconButton {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     border: none;
     background: transparent;
@@ -43,8 +45,8 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
-    font-size: 16px;
+    font-size: 14px;
+    transition: background 0.15s;
 }
 
 .headerIconButton:hover {
@@ -52,31 +54,32 @@
 }
 
 .mainTitle {
-    margin: 0;
-    font-size: 24px;
+    margin: 0 0 4px;
+    font-size: 20px;
     font-weight: 700;
     color: #000000;
     line-height: 1.2;
+    font-family: 'Raleway', sans-serif;
 }
 
 .componentBadge {
     display: inline-block;
-    margin-top: 8px;
-    padding: 4px 10px;
-    border-radius: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
     background: #e6f2ff;
     border: 1px solid #155DA4;
     color: #155DA4;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 }
 
+/* ───────────── Scrollable content ───────────── */
 .content {
     flex: 1;
-    padding: 20px;
+    padding: 12px 16px 16px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 0;
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -86,16 +89,286 @@
     display: none;
 }
 
-.footer {
-    padding: 16px 20px 20px;
-    border-top: 1px solid #eee;
-    flex-shrink: 0;
+/* ───────────── Design-spec block section ───────────── */
+.blockSection {
+    padding: 12px 0;
+    border-top: 1px solid #EBEBEB;
 }
 
-.sectionGroup {
+.blockSection:first-child {
+    border-top: none;
+    padding-top: 4px;
+}
+
+.blockHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.blockTitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #000000;
+    font-family: 'Raleway', sans-serif;
+}
+
+.blockActions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.blockIconBtn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+
+.blockIconBtn:hover {
+    background: #f0f0f0;
+    color: #155DA4;
+}
+
+/* ───────────── 2-column params grid ───────────── */
+.paramsBlock {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    padding: 4px 0;
+}
+
+.params2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+}
+
+.paramGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.paramGroupLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #000000;
+    font-family: 'Raleway', sans-serif;
+}
+
+.paramGroupLabelRow {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.paramGroupIcon {
+    font-size: 11px;
+    color: #155DA4;
+    cursor: pointer;
+}
+
+.paramPair {
+    display: flex;
+    gap: 6px;
+}
+
+/* Individual param field (label + input) */
+.paramField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.paramLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: #000000;
+    font-family: 'Raleway', sans-serif;
+}
+
+/* ───────────── Param input (underline style) ───────────── */
+.paramInputRow {
+    display: flex;
+    align-items: center;
+    border-bottom: 1.5px solid #155DA4;
+    padding: 3px 0;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.paramInputPrefix {
+    font-size: 11px;
+    font-weight: 600;
+    color: #155DA4;
+    flex-shrink: 0;
+    min-width: 10px;
+}
+
+.paramInputSuffix {
+    font-size: 11px;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.paramInput {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    color: #000;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+}
+
+.paramInput::-webkit-outer-spin-button,
+.paramInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.paramInput[type=number] {
+    -moz-appearance: textfield;
+}
+
+.paramInputLocked {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ───────────── Alignment buttons ───────────── */
+.alignRow {
+    display: flex;
+    gap: 3px;
+}
+
+.alignBtn {
+    width: 22px;
+    height: 22px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    padding: 0;
+}
+
+.alignBtn:hover {
+    background: #e6f2ff;
+    color: #155DA4;
+    border-color: #155DA4;
+}
+
+.alignBtnActive {
+    background: #155DA4;
+    color: #fff;
+    border-color: #155DA4;
+}
+
+/* ───────────── Opacity control ───────────── */
+.opacitySquare {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: #333;
+    flex-shrink: 0;
+    border: 1px solid #ccc;
+}
+
+/* ───────────── Color + opacity row ───────────── */
+.colorOpacityRow {
+    display: flex;
+    align-items: center;
+    border-bottom: 1.5px solid #155DA4;
+    padding: 3px 0;
+    gap: 5px;
+}
+
+.colorSwatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.colorHexInline {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    color: #000;
+    text-transform: uppercase;
+    min-width: 0;
+    flex: 1;
+    padding: 0;
+}
+
+.colorOpacityPct {
+    font-size: 11px;
+    color: #555;
+    flex-shrink: 0;
+}
+
+/* ───────────── Font select ───────────── */
+.paramSelectRow {
+    border-bottom: 1.5px solid #155DA4;
+    padding: 3px 0;
+}
+
+.paramSelect {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'Raleway', sans-serif;
+    font-size: 12px;
+    color: #000;
+    width: 100%;
+    cursor: pointer;
+    padding: 0;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23155DA4' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    padding-right: 14px;
+}
+
+/* ───────────── Legacy section group (used by form/filter/table/chart views) ───────────── */
+.sectionGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 0;
+    border-top: 1px solid #EBEBEB;
+}
+
+.sectionGroup:first-child {
+    border-top: none;
+    padding-top: 0;
 }
 
 .sectionHeader {
@@ -106,19 +379,19 @@
 }
 
 .sectionHeader .propertyButton {
-    padding: 6px 10px;
-    font-size: 12px;
-    white-space: nowrap;
+    padding: 4px 8px;
+    font-size: 11px;
 }
 
 .sectionTitle {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: #000000;
+    font-family: 'Raleway', sans-serif;
 }
 
 .subsectionTitle {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #555;
     margin-top: 4px;
@@ -126,29 +399,30 @@
 
 .row {
     display: flex;
-    gap: 12px;
+    gap: 10px;
 }
 
+/* ───────────── Legacy bordered inputs (used by form/filter/table/chart views) ───────────── */
 .inputWrapper {
     display: flex;
     align-items: center;
     border: 1.5px solid #155DA4;
-    border-radius: 8px;
-    padding: 8px 12px;
+    border-radius: 6px;
+    padding: 6px 10px;
     flex: 1;
     background: #FFFFFF;
-    transition: box-shadow 0.2s ease;
+    transition: box-shadow 0.2s;
     min-width: 0;
 }
 
 .inputWrapper:focus-within {
-    box-shadow: 0 0 0 2px rgba(21, 93, 164, 0.2);
+    box-shadow: 0 0 0 2px rgba(21, 93, 164, 0.15);
 }
 
 .prefix {
-    font-size: 14px;
-    color: #000000;
-    margin-right: 10px;
+    font-size: 12px;
+    color: #155DA4;
+    margin-right: 6px;
     font-weight: 600;
     flex-shrink: 0;
 }
@@ -157,8 +431,8 @@
     border: none;
     outline: none;
     width: 100%;
-    font-size: 14px;
-    color: #333333;
+    font-size: 13px;
+    color: #333;
     background: transparent;
     font-family: 'Raleway', sans-serif;
     min-width: 0;
@@ -178,8 +452,8 @@
     border: none;
     outline: none;
     width: 100%;
-    font-size: 14px;
-    color: #333333;
+    font-size: 13px;
+    color: #333;
     background: transparent;
     cursor: pointer;
     font-family: 'Raleway', sans-serif;
@@ -190,24 +464,25 @@
     padding-right: 18px;
 }
 
+/* ───────────── Legacy color input (used by card/table/chart views) ───────────── */
 .colorWrapper {
     display: flex;
     align-items: center;
     border: 1.5px solid #155DA4;
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 6px;
+    padding: 5px 10px;
     background: #FFFFFF;
-    gap: 12px;
+    gap: 10px;
 }
 
 .colorWrapper:focus-within {
-    box-shadow: 0 0 0 2px rgba(21, 93, 164, 0.2);
+    box-shadow: 0 0 0 2px rgba(21, 93, 164, 0.15);
 }
 
 .colorPickerContainer {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
     border: 1px solid #ccc;
     overflow: hidden;
     display: flex;
@@ -217,13 +492,14 @@
 }
 
 .colorInputSquare {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: none;
     outline: none;
     cursor: pointer;
     background: none;
     padding: 0;
+    transform: scale(1.8);
 }
 
 .hexInput {
@@ -231,24 +507,25 @@
     outline: none;
     width: 100%;
     background: transparent;
-    font-size: 14px;
+    font-size: 13px;
     text-transform: uppercase;
     font-family: 'Raleway', sans-serif;
     color: #333;
 }
 
+/* ───────────── Buttons ───────────── */
 .propertyButton {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 14px;
+    gap: 5px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 600;
     font-family: 'Raleway', sans-serif;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
 }
 
 .buttonBlock {
@@ -302,13 +579,14 @@
 
 .buttonIcon {
     display: inline-flex;
-    font-size: 14px;
+    font-size: 13px;
 }
 
+/* ───────────── Alerts ───────────── */
 .alert {
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 12px;
     line-height: 1.4;
 }
 
@@ -330,6 +608,7 @@
     color: #cf1322;
 }
 
+/* ───────────── Empty state ───────────── */
 .emptyState {
     flex: 1;
     display: flex;
@@ -342,18 +621,19 @@
 }
 
 .emptyStateTitle {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: #333;
     margin: 0 0 8px;
 }
 
 .emptyStateText {
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.5;
     margin: 0;
 }
 
+/* ───────────── Mapping controls ───────────── */
 .mappingHeader {
     display: flex;
     align-items: center;
@@ -375,19 +655,18 @@
 }
 
 .iconButton {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border: 1.5px solid #155DA4;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #fff;
     color: #155DA4;
-    font-size: 18px;
-    line-height: 1;
+    font-size: 16px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s;
     flex-shrink: 0;
 }
 
@@ -404,22 +683,60 @@
     background: #fff1f0;
 }
 
+/* ───────────── Checkboxes ───────────── */
 .checkboxRow {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 4px 0;
+    gap: 8px;
+    padding: 3px 0;
 }
 
 .checkboxRow input[type='checkbox'] {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     accent-color: #155DA4;
     cursor: pointer;
 }
 
 .checkboxLabel {
-    font-size: 14px;
+    font-size: 12px;
+    font-weight: 600;
     color: #333;
     cursor: pointer;
+}
+
+/* ───────────── Hint texts ───────────── */
+.hintText {
+    margin: 0;
+    font-size: 11px;
+    color: #8c8c8c;
+}
+
+.hintTextWarning {
+    margin: 0;
+    font-size: 11px;
+    color: #d46b08;
+}
+
+/* ───────────── Target binding list ───────────── */
+.targetList {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.targetItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+}
+
+/* ───────────── Footer ───────────── */
+.footer {
+    padding: 12px 16px 16px;
+    border-top: 1px solid #eee;
+    flex-shrink: 0;
 }
