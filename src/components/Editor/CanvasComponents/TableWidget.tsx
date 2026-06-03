@@ -4,7 +4,6 @@ import { useEditorStore } from '../../../store/editorStore';
 import { applyTableMapping } from '@/utils/dataMapping';
 import { validateTableMapping } from '@/utils/dataValidation';
 import { applyFiltersToRows, collectFiltersForTarget } from '@/utils/componentFilters';
-import { TABLE_DEMO_COLUMNS, TABLE_DEMO_ROWS } from '@/utils/tableDemoData';
 import type { TableColumnMapping } from '@/types/data';
 import type { DataRow } from '@/utils/dataValidation';
 import type { ComponentDataProps } from '@/types/data';
@@ -36,6 +35,18 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         [canvasComponents, componentId]
     );
 
+    const placeholderColumns = useMemo(() => {
+        const rawColumns = props.columns as string[] | undefined;
+        if (rawColumns?.length) {
+            return rawColumns.map((title, index) => ({ id: `col${index + 1}`, title }));
+        }
+        return [
+            { id: 'col1', title: 'Колонка 1' },
+            { id: 'col2', title: 'Колонка 2' },
+            { id: 'col3', title: 'Колонка 3' },
+        ];
+    }, [props.columns]);
+
     const mapped = useMemo(() => {
         if (props.customData && props.customColumns) {
             const filteredData = applyFiltersToRows(
@@ -50,10 +61,9 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         }
 
         if (!source?.data || source.data.length === 0) {
-            const filteredDemo = applyFiltersToRows(TABLE_DEMO_ROWS, activeFilters);
             return {
-                columns: TABLE_DEMO_COLUMNS,
-                data: filteredDemo,
+                columns: placeholderColumns,
+                data: [] as DataRow[],
                 validationError: null as string | null,
             };
         }
@@ -74,7 +84,15 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
             ...applied,
             validationError: null as string | null,
         };
-    }, [activeFilters, componentId, props.customColumns, props.customData, props.columnMappings, source?.data]);
+    }, [
+        activeFilters,
+        componentId,
+        placeholderColumns,
+        props.customColumns,
+        props.customData,
+        props.columnMappings,
+        source?.data,
+    ]);
 
     const { columns, data, validationError } = mapped;
 
