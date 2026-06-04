@@ -48,12 +48,19 @@ const scheduleSaveToProject = (get: () => EditorState) => {
 const serializeForSync = (component: EditorComponent, pageId: string | null) =>
     JSON.stringify({ ...component, pageId: pageId ?? undefined });
 
-const emitComponentChange = (component: EditorComponent, get: () => EditorState) => {
-    void signalrService.sendElementState(
+const syncComponentToHub = (component: EditorComponent, pageId: string | null) => {
+    if (!pageId) {
+        return;
+    }
+    void signalrService.saveElementPosition(
         component.id,
-        serializeForSync(component, get().currentPageId)
+        pageId,
+        serializeForSync(component, pageId)
     );
-    scheduleSaveToProject(get);
+};
+
+const emitComponentChange = (component: EditorComponent, get: () => EditorState) => {
+    syncComponentToHub(component, get().currentPageId);
 };
 
 const nextZIndex = (components: EditorComponent[]) =>
@@ -97,9 +104,16 @@ interface EditorState {
     addComponent: (component: Omit<EditorComponent, 'id'>) => void;
     duplicateComponent: (id: string, offset?: { x: number; y: number }) => void;
     addComponentFromSnapshot: (snapshot: Omit<EditorComponent, 'id' | 'x' | 'y'>, position: { x: number; y: number }) => void;
-    updateComponent: (id: string, updates: Partial<EditorComponent>, options?: { skipHistory?: boolean }) => void;
-    /** SaveElementPositionAsync — после drag/resize end на холсте. */
-    persistComponentPosition: (id: string) => void;
+    updateComponent: (
+        id: string,
+        updates: Partial<EditorComponent>,
+        options?: { skipHistory?: boolean; skipSync?: boolean }
+    ) => void;
+    /**
+     * SaveElementPositionAsync — после drag/resize end.
+     * overrides — актуальная геометрия с холста (не из API); без них берётся snapshot из store.
+     */
+    persistComponentPosition: (id: string, overrides?: Partial<EditorComponent>) => void;
     updateComponentProps: (id: string, props: Record<string, any>) => void;
     deleteComponent: (id: string) => void;
     bringToFront: (id: string) => void;
@@ -206,11 +220,7 @@ export const useEditorStore = create<EditorState>()(
                      };
                  });
 
-                 void signalrService.sendElementState(
-                     newComponent.id,
-                     serializeForSync(newComponent, get().currentPageId)
-                 );
-                 scheduleSaveToProject(get);
+                 syncComponentToHub(newComponent, get().currentPageId);
              },
 
             addComponentFromSnapshot: (snapshot, position) => {
@@ -228,7 +238,7 @@ export const useEditorStore = create<EditorState>()(
                 get().addComponentFromSnapshot(snapshot, { x: x + offset.x, y: y + offset.y });
             },
 
-             updateComponent: (id, updates, options?: { skipHistory?: boolean }) => {
+             updateComponent: (id, updates, options?: { skipHistory?: boolean; skipSync?: boolean }) => {
                  if (!options?.skipHistory) {
                      get().saveHistory();
                  }
@@ -249,20 +259,39 @@ export const useEditorStore = create<EditorState>()(
                      };
                  });
 
-                 if (updatedComponentData) {
+                 if (updatedComponentData && !options?.skipSync) {
                      emitComponentChange(updatedComponentData, get);
                  }
              },
 
-            persistComponentPosition: (id) => {
-                const state = get();
-                const pageId = state.currentPageId;
-                const component = state.components.find((item) => item.id === id);
-                if (!component || !pageId) {
+            persistComponentPosition: (id, overrides) => {
+                const pageId = get().currentPageId;
+                if (!pageId) {
                     return;
                 }
-                const jsonState = serializeForSync(component, pageId);
-                void signalrService.persistElement(component.id, pageId, jsonState);
+
+                let merged: EditorComponent | null = null;
+
+                set((state) => {
+                    const existing = state.components.find((item) => item.id === id);
+                    if (!existing) {
+                        return state;
+                    }
+
+                    merged = applySizeConstraints({ ...existing, ...overrides });
+                    const newComponents = state.components.map((item) =>
+                        item.id === id ? merged! : item
+                    );
+
+                    return {
+                        components: newComponents,
+                        pages: syncPagesWithCurrentComponents(state.pages, pageId, newComponents),
+                    };
+                });
+
+                if (merged) {
+                    syncComponentToHub(merged, pageId);
+                }
             },
 
              updateComponentProps: (id, props) => {
@@ -299,8 +328,7 @@ export const useEditorStore = create<EditorState>()(
                         selectedComponentId: state.selectedComponentId === id ? null : state.selectedComponentId,
                     };
                 });
-                signalrService.deleteElement(id);
-                scheduleSaveToProject(get);
+                void signalrService.deleteElement(id);
             },
 
             bringToFront: (id) => {
@@ -319,13 +347,57 @@ export const useEditorStore = create<EditorState>()(
             // СОБЫТИЯ ОТ СОКЕТОВ (Получаем от сервера)
             updateElementFromSocket: (id, json) => {
                 try {
-                    const parsed = JSON.parse(json) as EditorComponent;
+                    const parsed = JSON.parse(json) as EditorComponent & { pageId?: string };
+                    const componentId = parsed.id || id;
+
                     set((state) => {
-                        const exists = state.components.some(c => c.id === id);
-                        if (exists) {
-                            return { components: state.components.map(c => c.id === id ? { ...c, ...parsed } : c) };
+                        const existing = state.components.find((c) => c.id === componentId);
+                        if (!existing) {
+                            const created = applySizeConstraints(
+                                sanitizeEditorComponent({ ...parsed, id: componentId })
+                            );
+                            const components = [...state.components, created];
+                            return {
+                                components,
+                                pages: syncPagesWithCurrentComponents(
+                                    state.pages,
+                                    state.currentPageId,
+                                    components
+                                ),
+                            };
                         }
-                        return { components: [...state.components, parsed] };
+
+                        const merged = applySizeConstraints({
+                            ...existing,
+                            ...parsed,
+                            id: componentId,
+                        });
+
+                        const socketChangesGeometry =
+                            existing.x !== parsed.x ||
+                            existing.y !== parsed.y ||
+                            existing.width !== parsed.width ||
+                            existing.height !== parsed.height;
+
+                        // Эхо с хаба/БД не откатывает только что перетащенный элемент
+                        if (state.selectedComponentId === componentId && socketChangesGeometry) {
+                            merged.x = existing.x;
+                            merged.y = existing.y;
+                            merged.width = existing.width;
+                            merged.height = existing.height;
+                        }
+
+                        const components = state.components.map((c) =>
+                            c.id === componentId ? merged : c
+                        );
+                        return {
+                            components,
+                            pages: syncPagesWithCurrentComponents(
+                                state.pages,
+                                state.currentPageId,
+                                components
+                            ),
+                        };
                     });
                 } catch (e) {
                     console.error('Ошибка парсинга компонента из сокета:', e);
@@ -484,8 +556,7 @@ export const useEditorStore = create<EditorState>()(
                             state.selectedComponentId === componentId ? null : state.selectedComponentId,
                     };
                 });
-                signalrService.deleteElement(componentId);
-                scheduleSaveToProject(get);
+                void signalrService.deleteElement(componentId);
             },
 
             setCurrentPage: (pageId) => {

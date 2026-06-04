@@ -4,7 +4,6 @@ import { backendBaseUrl } from '@/config/env';
 class SignalRService {
     private connection: signalR.HubConnection | null = null;
 
-    // Инициализация и запуск подключения
     public async startConnection(): Promise<void> {
         if (this.connection?.state === signalR.HubConnectionState.Connected) {
             return;
@@ -15,7 +14,7 @@ class SignalRService {
                 skipNegotiation: false,
                 transport: signalR.HttpTransportType.WebSockets,
             })
-            .withAutomaticReconnect([0, 2000, 5000, 10000]) // Интервалы переподключения при разрыве
+            .withAutomaticReconnect([0, 2000, 5000, 10000])
             .configureLogging(signalR.LogLevel.Information)
             .build();
 
@@ -24,158 +23,158 @@ class SignalRService {
             console.log("🟢 SignalR: Подключение успешно установлено.");
         } catch (err) {
             console.error("🔴 SignalR: Ошибка при подключении:", err);
-            setTimeout(() => this.startConnection(), 5000); // Повторная попытка через 5 секунд
+            setTimeout(() => this.startConnection(), 5000);
         }
     }
 
-    // Остановка подключения (например, при выходе из редактора)
+    public clearEventHandlers(): void {
+        if (!this.connection) {
+            return;
+        }
+        const events = [
+            'ReceiveNewState',
+            'DeleteElement',
+            'DeleteAll',
+            'CreatePage',
+            'RenamePage',
+            'DeletePage',
+            'ElementPositionUpdated',
+        ] as const;
+        for (const eventName of events) {
+            this.connection.off(eventName);
+        }
+    }
+
     public async stopConnection(): Promise<void> {
         if (this.connection) {
+            this.clearEventHandlers();
             await this.connection.stop();
+            this.connection = null;
             console.log("🟡 SignalR: Подключение остановлено.");
         }
     }
-
-    // =========================================================
-    // МЕТОДЫ ОТПРАВКИ ДАННЫХ НА БЭКЕНД (Фронтенд -> Бэкенд)
-    // =========================================================
 
     public isConnected(): boolean {
         return this.connection?.state === signalR.HubConnectionState.Connected;
     }
 
-    // Отправка текущего состояния элемента (актуально при перемещении/изменении в реальном времени)
-    public async sendElementState(elementId: string, jsonState: string): Promise<boolean> {
-        if (!this.isConnected()) {
-            console.warn("SignalR: sendElementState пропущен — нет подключения к хабу.");
-            return false;
-        }
-
-        try {
-            await this.connection!.invoke("AddOrUpdateStateAsync", elementId, jsonState);
+    public async ensureConnected(): Promise<boolean> {
+        if (this.isConnected()) {
             return true;
-        } catch (err) {
-            console.error("SignalR: Не удалось отправить состояние элемента:", err);
-            return false;
         }
+        await this.startConnection();
+        return this.isConnected();
     }
 
-    /** Сохранение позиции/размера в БД после отпускания мыши (drag/resize end). */
+    /** Создание и обновление элемента — один RPC, сохранение в БД на бэкенде. */
     public async saveElementPosition(
         elementId: string,
         pageId: string,
         jsonState: string
     ): Promise<boolean> {
-        if (!this.isConnected()) {
-            console.warn("SignalR: saveElementPosition пропущен — нет подключения к хабу.");
+        if (!(await this.ensureConnected())) {
+            console.warn('SignalR: saveElementPosition пропущен — нет подключения к хабу.');
             return false;
         }
 
         try {
             await this.connection!.invoke(
-                "SaveElementPositionAsync",
+                'SaveElementPositionAsync',
                 elementId,
                 pageId,
                 jsonState
             );
             return true;
         } catch (err) {
-            console.error("SignalR: Не удалось сохранить позицию элемента в БД:", err);
+            console.error('SignalR: Не удалось сохранить позицию элемента:', err);
             return false;
         }
-    }
-
-    /** Актуальное состояние в памяти хаба + сохранение позиции (после drag end). */
-    public async persistElement(elementId: string, pageId: string, jsonState: string): Promise<boolean> {
-        const stateSent = await this.sendElementState(elementId, jsonState);
-        if (!stateSent) {
-            return false;
-        }
-        return this.saveElementPosition(elementId, pageId, jsonState);
     }
 
     public async createPage(pageId: string, name: string): Promise<void> {
-        if (!this.isConnected()) {
-            console.warn("SignalR: createPage пропущен — нет подключения к хабу.");
+        if (!(await this.ensureConnected())) {
             return;
         }
 
         try {
-            await this.connection!.invoke("CreatePageAsync", pageId, name);
+            await this.connection!.invoke('CreatePageAsync', pageId, name);
         } catch (err) {
-            console.error("SignalR: Не удалось уведомить о создании страницы:", err);
+            console.error('SignalR: Не удалось уведомить о создании страницы:', err);
         }
     }
 
     public async renamePage(pageId: string, name: string): Promise<void> {
-        if (!this.isConnected()) {
-            console.warn("SignalR: renamePage пропущен — нет подключения к хабу.");
+        if (!(await this.ensureConnected())) {
             return;
         }
 
         try {
-            await this.connection!.invoke("RenamePageAsync", pageId, name);
+            await this.connection!.invoke('RenamePageAsync', pageId, name);
         } catch (err) {
-            console.error("SignalR: Не удалось уведомить о переименовании страницы:", err);
+            console.error('SignalR: Не удалось уведомить о переименовании страницы:', err);
         }
     }
 
     public async deletePage(pageId: string): Promise<void> {
-        if (!this.isConnected()) {
-            console.warn("SignalR: deletePage пропущен — нет подключения к хабу.");
+        if (!(await this.ensureConnected())) {
             return;
         }
 
         try {
-            await this.connection!.invoke("DeletePageAsync", pageId);
+            await this.connection!.invoke('DeletePageAsync', pageId);
         } catch (err) {
-            console.error("SignalR: Не удалось уведомить об удалении страницы:", err);
+            console.error('SignalR: Не удалось уведомить об удалении страницы:', err);
         }
     }
 
-    // Удаление элемента
-    public async deleteElement(elementId: string): Promise<void> {
-        if (this.connection?.state === signalR.HubConnectionState.Connected) {
-            try {
-                await this.connection.invoke("DeleteElementAsync", elementId);
-            } catch (err) {
-                console.error("SignalR: Не удалось удалить элемент:", err);
-            }
+    public async deleteElement(elementId: string): Promise<boolean> {
+        if (!(await this.ensureConnected())) {
+            console.warn('SignalR: deleteElement пропущен — нет подключения к хабу.');
+            return false;
+        }
+
+        try {
+            await this.connection!.invoke('DeleteElementAsync', elementId);
+            return true;
+        } catch (err) {
+            console.error('SignalR: Не удалось удалить элемент:', err);
+            return false;
         }
     }
 
-    // =========================================================
-    // ПОДПИСКИ НА СОБЫТИЯ БЭКЕНДА (Бэкенд -> Фронтенд)
-    // =========================================================
+    private subscribe<T extends (...args: never[]) => void>(eventName: string, callback: T): void {
+        this.connection?.off(eventName);
+        this.connection?.on(eventName, callback);
+    }
 
     public onReceiveNewState(callback: (elementId: string, json: string) => void): void {
-        this.connection?.on("ReceiveNewState", callback);
+        this.subscribe('ReceiveNewState', callback);
     }
 
     public onDeleteElement(callback: (elementId: string) => void): void {
-        this.connection?.on("DeleteElement", callback);
+        this.subscribe('DeleteElement', callback);
     }
 
     public onDeleteAll(callback: () => void): void {
-        this.connection?.on("DeleteAll", callback);
+        this.subscribe('DeleteAll', callback);
     }
 
     public onCreatePage(callback: (pageId: string, name: string) => void): void {
-        this.connection?.on("CreatePage", callback);
+        this.subscribe('CreatePage', callback);
     }
 
     public onRenamePage(callback: (pageId: string, name: string) => void): void {
-        this.connection?.on("RenamePage", callback);
+        this.subscribe('RenamePage', callback);
     }
 
     public onDeletePage(callback: (pageId: string) => void): void {
-        this.connection?.on("DeletePage", callback);
+        this.subscribe('DeletePage', callback);
     }
 
     public onElementPositionUpdated(
         callback: (elementId: string, pageId: string, jsonState: string) => void
     ): void {
-        this.connection?.on("ElementPositionUpdated", callback);
+        this.subscribe('ElementPositionUpdated', callback);
     }
 }
 
