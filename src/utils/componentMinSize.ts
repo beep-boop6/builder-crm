@@ -5,6 +5,7 @@ import {
     calculateFormContentHeight,
     getFormFieldsFromProps,
     getFormSearchResizeConstraints,
+    getWidestFormFieldWidth,
     isFormSearchMode,
 } from '@/utils/formLayout';
 import type { FormMode } from '@/types/form';
@@ -115,7 +116,7 @@ const getFormMinSize = (component: EditorComponent, definition?: ComponentDefini
     const layout = String(props.layout ?? 'vertical');
     const fields = getFormFieldsFromProps(props);
     if (isFormSearchMode(props)) {
-        const search = getFormSearchResizeConstraints(props);
+        const search = getFormSearchResizeConstraints(component.width);
         return {
             minWidth: search.minWidth,
             minHeight: search.fixedHeight,
@@ -129,8 +130,10 @@ const getFormMinSize = (component: EditorComponent, definition?: ComponentDefini
         width: component.width,
     });
 
+    const widestField = getWidestFormFieldWidth(fields);
+
     return {
-        minWidth: Math.max(240, (definition?.defaultWidth ?? 400) * 0.6),
+        minWidth: Math.max(240, (definition?.defaultWidth ?? 400) * 0.6, widestField + 24),
         minHeight,
     };
 };

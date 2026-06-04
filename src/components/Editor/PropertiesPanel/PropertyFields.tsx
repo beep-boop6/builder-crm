@@ -394,6 +394,8 @@ interface LayoutSectionsProps {
     onTextAlignChange?: (v: string) => void;
     onVerticalAlignChange?: (v: string) => void;
     hideAlignment?: boolean;
+    hideHorizontalAlign?: boolean;
+    hideVerticalAlign?: boolean;
 }
 
 export const LayoutSections = ({
@@ -411,7 +413,12 @@ export const LayoutSections = ({
     onTextAlignChange,
     onVerticalAlignChange,
     hideAlignment = false,
+    hideHorizontalAlign = false,
+    hideVerticalAlign = false,
 }: LayoutSectionsProps) => {
+    const showHorizontalAlign = !hideAlignment && !hideHorizontalAlign && Boolean(onTextAlignChange);
+    const showVerticalAlign = !hideAlignment && !hideVerticalAlign && Boolean(onVerticalAlignChange);
+    const showAlignment = showHorizontalAlign || showVerticalAlign;
     const clampW = (v: number) => {
         let n = Math.max(minWidth, v);
         if (typeof maxWidth === 'number') n = Math.min(maxWidth, n);
@@ -498,32 +505,36 @@ export const LayoutSections = ({
             {/* Row 2: Alignment + Opacity */}
             <div className={styles.params2col}>
                 {/* Alignment */}
-                {!hideAlignment && (
+                {showAlignment && (
                     <div className={styles.paramGroup}>
                         <span className={styles.paramGroupLabel}>Выравнивание</span>
                         <div className={styles.alignRow}>
-                            {H_ALIGNS.map((a) => (
-                                <button
-                                    key={a.value}
-                                    type="button"
-                                    title={a.title}
-                                    className={`${styles.alignBtn} ${textAlign === a.value ? styles.alignBtnActive : ''}`}
-                                    onClick={() => onTextAlignChange?.(a.value)}
-                                >
-                                    {a.icon}
-                                </button>
-                            ))}
-                            {V_ALIGNS.map((a) => (
-                                <button
-                                    key={a.value}
-                                    type="button"
-                                    title={a.title}
-                                    className={`${styles.alignBtn} ${verticalAlign === a.value ? styles.alignBtnActive : ''}`}
-                                    onClick={() => onVerticalAlignChange?.(a.value)}
-                                >
-                                    {a.icon}
-                                </button>
-                            ))}
+                            {showHorizontalAlign
+                                ? H_ALIGNS.map((a) => (
+                                    <button
+                                        key={a.value}
+                                        type="button"
+                                        title={a.title}
+                                        className={`${styles.alignBtn} ${textAlign === a.value ? styles.alignBtnActive : ''}`}
+                                        onClick={() => onTextAlignChange?.(a.value)}
+                                    >
+                                        {a.icon}
+                                    </button>
+                                ))
+                                : null}
+                            {showVerticalAlign
+                                ? V_ALIGNS.map((a) => (
+                                    <button
+                                        key={a.value}
+                                        type="button"
+                                        title={a.title}
+                                        className={`${styles.alignBtn} ${verticalAlign === a.value ? styles.alignBtnActive : ''}`}
+                                        onClick={() => onVerticalAlignChange?.(a.value)}
+                                    >
+                                        {a.icon}
+                                    </button>
+                                ))
+                                : null}
                         </div>
                     </div>
                 )}
@@ -564,6 +575,7 @@ interface BorderSectionProps {
     borderWidth: number;
     backgroundColor: string;
     borderRadius: number;
+    hideBackgroundColor?: boolean;
     onEnabledChange: (v: boolean) => void;
     onBorderColorChange: (v: string) => void;
     onBorderWidthChange: (v: number) => void;
@@ -577,6 +589,7 @@ export const BorderSection = ({
     borderWidth,
     backgroundColor,
     borderRadius,
+    hideBackgroundColor = false,
     onEnabledChange,
     onBorderColorChange,
     onBorderWidthChange,
@@ -613,11 +626,13 @@ export const BorderSection = ({
                 prefix="≡"
                 disabled={!enabled}
             />
-            <ColorOpacityField
-                label="Цвет фона"
-                color={backgroundColor || '#FFFFFF'}
-                onChange={onBackgroundColorChange}
-            />
+            {!hideBackgroundColor ? (
+                <ColorOpacityField
+                    label="Цвет фона"
+                    color={backgroundColor || '#FFFFFF'}
+                    onChange={onBackgroundColorChange}
+                />
+            ) : null}
             <ParamInput
                 label="Закругление"
                 value={borderRadius}

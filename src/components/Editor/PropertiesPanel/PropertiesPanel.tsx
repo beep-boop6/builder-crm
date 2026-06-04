@@ -21,7 +21,7 @@ import {
     TextSection,
 } from './PropertyFields';
 import { getComponentResizeBounds } from '@/utils/formResize';
-import { isFormSearchMode } from '@/utils/formLayout';
+import { isFormSearchMode, SEARCH_FORM_BORDER_RADIUS } from '@/utils/formLayout';
 import { getAdaptivePalette } from '@/utils/colorContrast';
 import styles from './PropertiesPanel.module.css';
 
@@ -73,8 +73,8 @@ export const PropertiesPanel = () => {
     const isSearchForm = selectedComponent.type === 'form' && isFormSearchMode(props);
 
     const handleUpdate = (key: keyof EditorComponent, value: string | number) => {
-        if (key === 'width' && isSearchForm && typeof resizeBounds.maxWidth === 'number') {
-            const next = Math.min(resizeBounds.maxWidth, Math.max(resizeBounds.minWidth, Number(value)));
+        if (key === 'width' && isSearchForm) {
+            const next = Math.max(resizeBounds.minWidth, Number(value));
             updateComponent(selectedComponent.id, { width: next });
             return;
         }
@@ -114,10 +114,16 @@ export const PropertiesPanel = () => {
             return;
         }
 
+        const latestProps =
+            useEditorStore.getState().components.find((c) => c.id === selectedComponent.id)?.props
+            ?? props;
+
         if (componentType === 'table') {
             updateComponentProps(selectedComponent.id, {
-                ...selectedComponent.props,
+                ...latestProps,
                 dataSourceId,
+                customData: undefined,
+                customColumns: undefined,
                 columnMappings: buildDefaultTableMappings(source.data),
             });
             return;
@@ -125,7 +131,7 @@ export const PropertiesPanel = () => {
 
         const fields = source.fields;
         updateComponentProps(selectedComponent.id, {
-            ...selectedComponent.props,
+            ...latestProps,
             dataSourceId,
             chartMapping: {
                 xField: fields[0] ?? '',
@@ -143,6 +149,20 @@ export const PropertiesPanel = () => {
         setIsSaveModalOpen(false);
     };
 
+    const alignmentFlags = (() => {
+        const type = selectedComponent.type;
+        if (type === 'card-deal' || type === 'card-summary') {
+            return { hideHorizontalAlign: false, hideVerticalAlign: true };
+        }
+        if (type === 'form') {
+            if (isSearchForm) {
+                return { hideAlignment: true };
+            }
+            return { hideHorizontalAlign: false, hideVerticalAlign: true };
+        }
+        return { hideHorizontalAlign: false, hideVerticalAlign: false };
+    })();
+
     const renderCommonSections = () => (
         <>
             <LayoutSections
@@ -159,13 +179,19 @@ export const PropertiesPanel = () => {
                 onOpacityChange={(value) => handleUpdateProp({ opacity: value })}
                 onTextAlignChange={(value) => handleUpdateProp({ textAlign: value })}
                 onVerticalAlignChange={(value) => handleUpdateProp({ verticalAlign: value })}
+                {...alignmentFlags}
             />
             <BorderSection
                 enabled={behavior.borderEnabled}
                 borderColor={behavior.borderColor}
                 borderWidth={behavior.borderWidth}
                 backgroundColor={selectedComponent.backgroundColor || '#FFFFFF'}
-                borderRadius={selectedComponent.borderRadius ?? 12}
+                borderRadius={
+                    isSearchForm
+                        ? (selectedComponent.borderRadius ?? SEARCH_FORM_BORDER_RADIUS)
+                        : (selectedComponent.borderRadius ?? 12)
+                }
+                hideBackgroundColor={isSearchForm}
                 onEnabledChange={(enabled) =>
                     handleUpdateProp({
                         borderWidth: enabled ? (behavior.borderWidth > 0 ? behavior.borderWidth : 1) : 0,
@@ -203,12 +229,14 @@ export const PropertiesPanel = () => {
     const renderPanelBody = () => {
         if (selectedComponent.type === 'table') {
             return (
-                <TablePropertiesView
-                    component={selectedComponent}
-                    onUpdate={handleUpdate}
-                    onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
-                    onDataSourceChange={(id) => handleDataSourceChange(id, 'table')}
-                />
+                <>
+                    <TablePropertiesView
+                        component={selectedComponent}
+                        onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
+                        onDataSourceChange={(id) => handleDataSourceChange(id, 'table')}
+                    />
+                    {renderCommonSections()}
+                </>
             );
         }
 

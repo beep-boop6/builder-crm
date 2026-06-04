@@ -99,7 +99,7 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             return {
                 labels: [],
                 values: [],
-                validationError: validation.error ?? 'Ошибка маппинга',
+                validationError: validation.error ?? 'Ошибка настройки данных графика',
             };
         }
 
