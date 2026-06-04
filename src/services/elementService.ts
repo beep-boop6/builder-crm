@@ -51,7 +51,7 @@ const parseComponent = (
 };
 
 export const elementService = {
-    /** Только чтение при загрузке проекта. */
+    /** Только чтение при загрузке проекта (без мутаций). */
     getByPageId: async (pageId: string): Promise<BackendElement[]> => {
         if (isMockEnabled) {
             return [];
@@ -64,17 +64,31 @@ export const elementService = {
         return unwrapElementList(response.data);
     },
 
-    save: async (pageId: string, elementId: string, json: string): Promise<void> => {
+    create: async (pageId: string, elementId: string, json: string): Promise<void> => {
+        const ok = await signalrService.createElement(pageId, elementId, json);
+        if (!ok) {
+            throw new Error('Не удалось создать элемент через хаб');
+        }
+    },
+
+    update: async (elementId: string, json: string): Promise<void> => {
+        const ok = await signalrService.updateElement(elementId, json);
+        if (!ok) {
+            throw new Error('Не удалось обновить элемент через хаб');
+        }
+    },
+
+    savePosition: async (pageId: string, elementId: string, json: string): Promise<void> => {
         const ok = await signalrService.saveElementPosition(elementId, pageId, json);
         if (!ok) {
-            throw new Error('Не удалось сохранить элемент через SignalR');
+            throw new Error('Не удалось сохранить позицию элемента через хаб');
         }
     },
 
     delete: async (elementId: string): Promise<void> => {
         const ok = await signalrService.deleteElement(elementId);
         if (!ok) {
-            throw new Error('Не удалось удалить элемент через SignalR');
+            throw new Error('Не удалось удалить элемент через хаб');
         }
     },
 
@@ -85,7 +99,7 @@ export const elementService = {
         return dedupeComponentsById(components);
     },
 
-    /** Первичная выгрузка страниц с компонентами в БД (шаблон, импорт) — без REST diff. */
+    /** Первичная выгрузка компонентов шаблона — CreateElementAsync, без REST. */
     syncPagesViaHub: async (pages: Page[]): Promise<void> => {
         if (isMockEnabled) {
             return;
@@ -98,7 +112,11 @@ export const elementService = {
 
         for (const page of pages) {
             for (const component of dedupeComponentsById(page.components)) {
-                await elementService.save(page.id, component.id, serializeComponent(component, page.id));
+                await elementService.create(
+                    page.id,
+                    component.id,
+                    serializeComponent(component, page.id)
+                );
             }
         }
     },
