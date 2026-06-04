@@ -41,20 +41,6 @@ const unwrapProjectList = (payload: unknown): Project[] => {
     return projects.map((project) => mapProject(project as RawProject));
 };
 
-const applyComponentIdRemaps = (pages: Page[], idRemaps: Record<string, string>): Page[] => {
-    if (Object.keys(idRemaps).length === 0) {
-        return pages;
-    }
-
-    return pages.map((page) => ({
-        ...page,
-        components: page.components.map((component) => ({
-            ...component,
-            id: idRemaps[component.id] ?? component.id,
-        })),
-    }));
-};
-
 const loadProjectPages = async (project: Project): Promise<Page[]> => {
     let pages = await pageService.getByProject(project.id);
 
@@ -171,15 +157,12 @@ export const projectService = {
 
         const { pages: syncedPages } = await syncProjectPages(id, nextPages);
 
-        const componentIdRemaps = await elementService.syncProjectElements(syncedPages);
-        const finalPages = applyComponentIdRemaps(syncedPages, componentIdRemaps);
-
         return {
             ...current,
             ...data,
             name: nextName,
             navigationType: data.navigationType ?? current.navigationType,
-            pages: finalPages,
+            pages: syncedPages,
         };
     },
 

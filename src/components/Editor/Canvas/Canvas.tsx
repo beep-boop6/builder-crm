@@ -31,7 +31,6 @@ const isInteractiveCanvasTarget = (target: EventTarget | null): boolean =>
 
 export const Canvas = ({ components, readonly = false }: CanvasProps) => {
     const {
-        updateComponent,
         persistComponentPosition,
         selectComponent,
         selectedComponentId,
@@ -81,9 +80,8 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
         const newX = Math.max(0, Math.min(data.x, maxX));
         const newY = Math.max(0, Math.min(data.y, maxY));
 
-        updateComponent(id, { x: newX, y: newY });
-        persistComponentPosition(id);
-    }, [components, getCanvasBounds, updateComponent, persistComponentPosition]);
+        persistComponentPosition(id, { x: newX, y: newY });
+    }, [components, getCanvasBounds, persistComponentPosition]);
 
     const handleResizeStop = useCallback((id: string, ref: HTMLElement, position: { x: number, y: number }) => {
         const component = components.find((c) => c.id === id);
@@ -101,9 +99,13 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
             definition
         );
 
-        updateComponent(id, { width: newWidth, height: newHeight, x: position.x, y: position.y });
-        persistComponentPosition(id);
-    }, [components, getComponentDefinition, updateComponent, persistComponentPosition]);
+        persistComponentPosition(id, {
+            width: newWidth,
+            height: newHeight,
+            x: position.x,
+            y: position.y,
+        });
+    }, [components, getComponentDefinition, persistComponentPosition]);
 
     const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
         e.preventDefault();

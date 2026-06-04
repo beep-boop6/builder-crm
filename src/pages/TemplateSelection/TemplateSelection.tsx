@@ -5,6 +5,7 @@ import { TemplateCarousel } from './TemplateCarousel';
 import { useTemplateStore } from '@/store/templateStore';
 import { useProjectStore } from '@/store/projectStore';
 import { projectService } from '@/services/projectService';
+import { elementService } from '@/services/elementService';
 import { TEMPLATE_TYPES } from '@/constants/templateTypes';
 import type { ProjectTemplate } from '@/types/template';
 import styles from './TemplateSelection.module.css';
@@ -26,12 +27,12 @@ const TemplateSelectionPage = () => {
     const handleUseTemplate = async (template: ProjectTemplate) => {
         try {
             const project = await createProject(template.name, template.navigationType);
-            await projectService.update(project.id, {
-                pages: template.pages.map((page) => ({
-                    ...page,
-                    components: page.components.map((component) => ({ ...component })),
-                })),
-            });
+            const pages = template.pages.map((page) => ({
+                ...page,
+                components: page.components.map((component) => ({ ...component })),
+            }));
+            await projectService.update(project.id, { pages });
+            await elementService.syncPagesViaHub(pages);
             message.success('Проект создан из шаблона');
             navigate(`/builder/${project.id}`);
         } catch {

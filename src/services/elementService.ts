@@ -2,20 +2,14 @@ import { apiClient } from './api';
 import { isMockEnabled } from '@/config/env';
 import type { EditorComponent } from '@/store/editorStore';
 import type { Page } from '@/types';
+import { dedupeComponentsById } from '@/utils/dedupeComponents';
+import { signalrService } from './signalrService';
 
 export interface BackendElement {
     id: string;
     json: string | null;
     lastModified?: string;
 }
-
-type RequestOptions = {
-    skipErrorToast?: boolean;
-};
-
-const silentHeader = (options?: RequestOptions) => (
-    options?.skipErrorToast ? { 'X-Skip-Error-Toast': 'true' } : undefined
-);
 
 const mapElement = (raw: Record<string, unknown>): BackendElement => ({
     id: String(raw.id ?? raw.Id ?? ''),
@@ -33,7 +27,7 @@ const unwrapElementList = (payload: unknown): BackendElement[] => {
     return elements.map((item) => mapElement(item as Record<string, unknown>));
 };
 
-const serializeComponent = (component: EditorComponent, pageId: string): string =>
+export const serializeComponent = (component: EditorComponent, pageId: string): string =>
     JSON.stringify({ ...component, pageId });
 
 const parseComponent = (
@@ -57,6 +51,7 @@ const parseComponent = (
 };
 
 export const elementService = {
+    /** Только чтение при загрузке проекта. */
     getByPageId: async (pageId: string): Promise<BackendElement[]> => {
         if (isMockEnabled) {
             return [];
@@ -69,77 +64,42 @@ export const elementService = {
         return unwrapElementList(response.data);
     },
 
-    create: async (
-        pageId: string,
-        json: string,
-        options?: RequestOptions
-    ): Promise<BackendElement> => {
-        const payload = await apiClient.post<Record<string, unknown>>(
-            '/elements',
-            { projectId: pageId, json },
-            { headers: silentHeader(options) }
-        );
-
-        return mapElement(payload.data);
+    save: async (pageId: string, elementId: string, json: string): Promise<void> => {
+        const ok = await signalrService.saveElementPosition(elementId, pageId, json);
+        if (!ok) {
+            throw new Error('Не удалось сохранить элемент через SignalR');
+        }
     },
 
-    update: async (
-        elementId: string,
-        json: string,
-        options?: RequestOptions
-    ): Promise<void> => {
-        await apiClient.put(
-            `/elements/${elementId}`,
-            { id: elementId, json },
-            { headers: silentHeader(options) }
-        );
-    },
-
-    delete: async (elementId: string, options?: RequestOptions): Promise<void> => {
-        await apiClient.delete(`/elements/${elementId}`, {
-            headers: silentHeader(options),
-        });
+    delete: async (elementId: string): Promise<void> => {
+        const ok = await signalrService.deleteElement(elementId);
+        if (!ok) {
+            throw new Error('Не удалось удалить элемент через SignalR');
+        }
     },
 
     parseComponentsFromElements: (elements: BackendElement[], pageId: string) => {
-        return elements
+        const components = elements
             .map((element) => parseComponent(element, pageId))
             .filter((component): component is EditorComponent => Boolean(component));
+        return dedupeComponentsById(components);
     },
 
-    syncProjectElements: async (pages: Page[]): Promise<Record<string, string>> => {
+    /** Первичная выгрузка страниц с компонентами в БД (шаблон, импорт) — без REST diff. */
+    syncPagesViaHub: async (pages: Page[]): Promise<void> => {
         if (isMockEnabled) {
-            return {};
+            return;
         }
 
-        const idRemaps: Record<string, string> = {};
+        if (!(await signalrService.ensureConnected())) {
+            console.warn('elementService.syncPagesViaHub: нет подключения к хабу');
+            return;
+        }
 
         for (const page of pages) {
-            const serverElements = await elementService.getByPageId(page.id);
-            const serverIds = new Set(serverElements.map((element) => element.id.toLowerCase()));
-            const localIds = new Set(page.components.map((component) => component.id.toLowerCase()));
-
-            for (const serverId of serverIds) {
-                if (!localIds.has(serverId)) {
-                    await elementService.delete(serverId, { skipErrorToast: true });
-                }
-            }
-
-            for (const component of page.components) {
-                const payload = serializeComponent(component, page.id);
-
-                if (serverIds.has(component.id.toLowerCase())) {
-                    await elementService.update(component.id, payload, { skipErrorToast: true });
-                    continue;
-                }
-
-                const created = await elementService.create(page.id, payload, { skipErrorToast: true });
-                if (created.id && created.id !== component.id) {
-                    idRemaps[component.id] = created.id;
-                }
+            for (const component of dedupeComponentsById(page.components)) {
+                await elementService.save(page.id, component.id, serializeComponent(component, page.id));
             }
         }
-
-        return idRemaps;
     },
 };
