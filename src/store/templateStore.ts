@@ -3,30 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Page } from '@/types';
 import type { ProjectTemplate } from '@/types/template';
 import { generateGuid } from '@/utils';
-
-const SEED_TEMPLATES: Omit<ProjectTemplate, 'createdAt' | 'updatedAt'>[] = [
-    {
-        id: 'seed-dashboard',
-        name: 'Дашборд продаж',
-        type: 'dashboard',
-        navigationType: 'sidebar',
-        pages: [{ id: 'p1', title: 'Главная', route: '/', components: [], order: 1 }],
-    },
-    {
-        id: 'seed-list',
-        name: 'Список клиентов',
-        type: 'list',
-        navigationType: 'sidebar',
-        pages: [{ id: 'p1', title: 'Клиенты', route: '/clients', components: [], order: 1 }],
-    },
-    {
-        id: 'seed-detail',
-        name: 'Карточка товара',
-        type: 'detail',
-        navigationType: 'topbar',
-        pages: [{ id: 'p1', title: 'Товар', route: '/product', components: [], order: 1 }],
-    },
-];
+import { SYSTEM_TEMPLATES } from '@/data/systemTemplates';
 
 interface TemplateState {
     templates: ProjectTemplate[];
@@ -53,7 +30,7 @@ const withTimestamps = (
 export const useTemplateStore = create<TemplateState>()(
     persist(
         (set, get) => ({
-            templates: SEED_TEMPLATES.map(withTimestamps),
+            templates: SYSTEM_TEMPLATES.map(withTimestamps),
             selectedType: 'all',
 
             setSelectedType: (type) => set({ selectedType: type }),
@@ -81,9 +58,14 @@ export const useTemplateStore = create<TemplateState>()(
                 return template;
             },
 
-            deleteTemplate: (id) => set((state) => ({
-                templates: state.templates.filter((template) => template.id !== id),
-            })),
+            deleteTemplate: (id) => {
+                if (SYSTEM_TEMPLATES.some((template) => template.id === id)) {
+                    return;
+                }
+                set((state) => ({
+                    templates: state.templates.filter((template) => template.id !== id),
+                }));
+            },
 
             getFilteredTemplates: () => {
                 const { templates, selectedType } = get();
@@ -95,6 +77,25 @@ export const useTemplateStore = create<TemplateState>()(
         }),
         {
             name: 'builder_crm_project_templates',
+            version: 2,
+            migrate: (persistedState, version) => {
+                const state = persistedState as TemplateState | undefined;
+                if (version < 2 || !state) {
+                    return {
+                        templates: SYSTEM_TEMPLATES.map(withTimestamps),
+                        selectedType: state?.selectedType ?? 'all',
+                    };
+                }
+                const systemIds = new Set(SYSTEM_TEMPLATES.map((t) => t.id));
+                const userTemplates = state.templates.filter((t) => !systemIds.has(t.id));
+                return {
+                    ...state,
+                    templates: [
+                        ...SYSTEM_TEMPLATES.map(withTimestamps),
+                        ...userTemplates,
+                    ],
+                };
+            },
         },
     ),
 );

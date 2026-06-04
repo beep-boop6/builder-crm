@@ -32,20 +32,56 @@ export interface DealData {
     client: string;
     status: 'lead' | 'negotiation' | 'deal' | 'closed';
     amount: number;
+    date: string;
 }
 
 const MOCK_DEALS: DealData[] = [
-    { id: '1', title: 'Поставка оборудования', client: 'ООО Альфа', status: 'lead', amount: 120000 },
-    { id: '2', title: 'Лицензии ПО', client: 'ИП Бета', status: 'negotiation', amount: 85000 },
-    { id: '3', title: 'Сервисный контракт', client: 'ЗАО Гамма', status: 'deal', amount: 240000 },
-    { id: '4', title: 'Консалтинг', client: 'ООО Дельта', status: 'closed', amount: 45000 },
-    { id: '5', title: 'Интеграция CRM', client: 'ООО Эпсилон', status: 'lead', amount: 310000 },
+    { id: '1', title: 'Поставка оборудования', client: 'ООО Альфа', status: 'lead', amount: 120000, date: '2026-01-12' },
+    { id: '2', title: 'Лицензии ПО', client: 'ИП Бета', status: 'negotiation', amount: 85000, date: '2026-02-03' },
+    { id: '3', title: 'Сервисный контракт', client: 'ЗАО Гамма', status: 'deal', amount: 240000, date: '2026-02-18' },
+    { id: '4', title: 'Консалтинг', client: 'ООО Дельта', status: 'closed', amount: 45000, date: '2026-03-01' },
+    { id: '5', title: 'Интеграция CRM', client: 'ООО Эпсилон', status: 'lead', amount: 310000, date: '2026-03-15' },
+];
+
+export interface ClientData {
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+    status: 'active' | 'inactive' | 'new';
+}
+
+const MOCK_CLIENTS: ClientData[] = [
+    { id: '1', name: 'Иван Иванов', phone: '+7 (999) 123-45-67', email: 'ivan@example.com', status: 'active' },
+    { id: '2', name: 'Петр Петров', phone: '+7 (999) 234-56-78', email: 'petr@example.com', status: 'active' },
+    { id: '3', name: 'Анна Смирнова', phone: '+7 (999) 345-67-89', email: 'anna@example.com', status: 'inactive' },
+    { id: '4', name: 'Ольга Козлова', phone: '+7 (999) 456-78-90', email: 'olga@example.com', status: 'new' },
+    { id: '5', name: 'Сергей Волков', phone: '+7 (999) 567-89-01', email: 'sergey@example.com', status: 'active' },
+];
+
+export interface TransactionData {
+    id: string;
+    date: string;
+    type: 'income' | 'expense';
+    amount: number;
+    category: string;
+}
+
+const MOCK_TRANSACTIONS: TransactionData[] = [
+    { id: '1', date: '2026-01-05', type: 'income', amount: 120000, category: 'Продажи' },
+    { id: '2', date: '2026-01-18', type: 'expense', amount: 45000, category: 'Зарплата' },
+    { id: '3', date: '2026-02-02', type: 'income', amount: 85000, category: 'Услуги' },
+    { id: '4', date: '2026-02-14', type: 'expense', amount: 22000, category: 'Маркетинг' },
+    { id: '5', date: '2026-03-01', type: 'income', amount: 240000, category: 'Контракт' },
+    { id: '6', date: '2026-03-10', type: 'expense', amount: 18000, category: 'Офис' },
 ];
 
 const MOCK_REGISTRY: Record<string, DataRow[]> = {
     users: MOCK_USERS as unknown as DataRow[],
     sales: MOCK_SALES as unknown as DataRow[],
     deals: MOCK_DEALS as unknown as DataRow[],
+    clients: MOCK_CLIENTS as unknown as DataRow[],
+    transactions: MOCK_TRANSACTIONS as unknown as DataRow[],
 };
 
 export const dataService = {
