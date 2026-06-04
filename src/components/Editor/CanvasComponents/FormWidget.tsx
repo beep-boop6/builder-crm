@@ -167,10 +167,23 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
                         value={searchValue}
                         onMouseDown={stopCanvasBubble}
                         onClick={stopCanvasBubble}
-                        onChange={(event) => patch({ searchValue: event.target.value })}
+                        onChange={(event) => {
+                            const value = event.target.value;
+                            patch({
+                                searchValue: value,
+                                ...(value === '' ? { appliedSearchValue: '' } : {}),
+                            });
+                        }}
                         onSearch={(value) => {
                             notifyIfUnlinked();
-                            patch({ searchValue: value });
+                            patch({
+                                searchValue: value,
+                                appliedSearchValue: value,
+                                lastAppliedAt: Date.now(),
+                            });
+                            if (targetIds.length > 0 && value.trim()) {
+                                message.success('Фильтр применён к связанным компонентам');
+                            }
                         }}
                     />
                 </div>

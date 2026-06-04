@@ -102,6 +102,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
             targetComponentIds: [],
             searchFieldKey: 'text',
             searchValue: '',
+            appliedSearchValue: '',
         },
         editableFields: ['fields', 'layout', 'formMode', 'width', 'height', 'x', 'y'],
         isBuiltIn: true,

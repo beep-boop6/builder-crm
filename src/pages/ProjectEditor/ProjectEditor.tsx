@@ -83,6 +83,10 @@ const ProjectEditorPage = () => {
             signalrService.onDeletePage((pageId) => {
                 deletePageFromSocket(pageId);
             });
+
+            signalrService.onElementPositionUpdated((elementId, _pageId, jsonState) => {
+                updateElementFromSocket(elementId, jsonState);
+            });
         };
 
         initRealtime();

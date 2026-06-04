@@ -257,6 +257,13 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
 
     if (source?.isLoading) return <div className={styles.stateMessage}>Загрузка данных...</div>;
     if (source?.error) return <div className={`${styles.stateMessage} ${styles.stateError}`}>Ошибка: {source.error}</div>;
+    if (displayData.length === 0 && activeFilters.length > 0) {
+        return (
+            <div className={`${styles.stateMessage} ${styles.stateWarning}`}>
+                Нет строк по фильтру формы/поиска. Проверьте ключи полей и привязку к таблице.
+            </div>
+        );
+    }
     if (validationError) {
         return (
             <div className={`${styles.stateMessage} ${styles.stateWarning}`}>
