@@ -48,19 +48,26 @@ const scheduleSaveToProject = (get: () => EditorState) => {
 const serializeForSync = (component: EditorComponent, pageId: string | null) =>
     JSON.stringify({ ...component, pageId: pageId ?? undefined });
 
-const syncComponentToHub = (component: EditorComponent, pageId: string | null) => {
+const syncComponentCreate = (component: EditorComponent, pageId: string | null) => {
     if (!pageId) {
         return;
     }
-    void signalrService.saveElementPosition(
-        component.id,
+    void signalrService.createElement(
         pageId,
+        component.id,
         serializeForSync(component, pageId)
     );
 };
 
+const syncComponentUpdate = (component: EditorComponent, pageId: string | null) => {
+    if (!pageId) {
+        return;
+    }
+    void signalrService.updateElement(component.id, serializeForSync(component, pageId));
+};
+
 const emitComponentChange = (component: EditorComponent, get: () => EditorState) => {
-    syncComponentToHub(component, get().currentPageId);
+    syncComponentUpdate(component, get().currentPageId);
 };
 
 const nextZIndex = (components: EditorComponent[]) =>
@@ -220,7 +227,7 @@ export const useEditorStore = create<EditorState>()(
                      };
                  });
 
-                 syncComponentToHub(newComponent, get().currentPageId);
+                 syncComponentCreate(newComponent, get().currentPageId);
              },
 
             addComponentFromSnapshot: (snapshot, position) => {
@@ -270,17 +277,15 @@ export const useEditorStore = create<EditorState>()(
                     return;
                 }
 
-                let merged: EditorComponent | null = null;
-
                 set((state) => {
                     const existing = state.components.find((item) => item.id === id);
                     if (!existing) {
                         return state;
                     }
 
-                    merged = applySizeConstraints({ ...existing, ...overrides });
+                    const merged = applySizeConstraints({ ...existing, ...overrides });
                     const newComponents = state.components.map((item) =>
-                        item.id === id ? merged! : item
+                        item.id === id ? merged : item
                     );
 
                     return {
@@ -289,8 +294,13 @@ export const useEditorStore = create<EditorState>()(
                     };
                 });
 
-                if (merged) {
-                    syncComponentToHub(merged, pageId);
+                const component = get().components.find((item) => item.id === id);
+                if (component) {
+                    void signalrService.saveElementPosition(
+                        component.id,
+                        pageId,
+                        serializeForSync(component, pageId)
+                    );
                 }
             },
 
