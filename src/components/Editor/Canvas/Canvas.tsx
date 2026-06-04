@@ -5,6 +5,7 @@ import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { buildComponentFromDefinition, buildComponentFromSnapshot } from '@/utils/componentDefaults';
 import { clampComponentAfterResize, getComponentResizeBounds } from '@/utils/formResize';
+import { isFormSearchMode, SEARCH_FORM_BORDER_RADIUS } from '@/utils/formLayout';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
@@ -210,6 +211,11 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 <TableWidget
                     componentId={component.id}
                     props={component.props || {}}
+                    fontSize={component.fontSize}
+                    fontWeight={component.fontWeight}
+                    color={component.color}
+                    fontFamily={(component.props?.fontFamily as string) || 'Raleway, sans-serif'}
+                    backgroundColor={component.backgroundColor || '#FFFFFF'}
                 />
             );
         }
@@ -265,8 +271,12 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 const borderWidth = typeof componentProps.borderWidth === 'number' ? componentProps.borderWidth : 0;
                 const borderColor = String(componentProps.borderColor ?? '#E8E8E8');
                 const isSelected = !readonly && selectedComponentId === component.id;
+                const isSearchForm = component.type === 'form' && isFormSearchMode(componentProps);
+                const shellBorderRadius = isSearchForm
+                    ? (component.borderRadius ?? SEARCH_FORM_BORDER_RADIUS)
+                    : (component.borderRadius ?? 12);
                 const shellStyle: React.CSSProperties = {
-                    borderRadius: `${component.borderRadius ?? 12}px`,
+                    borderRadius: `${shellBorderRadius}px`,
                     border: 'none',
                     boxShadow: borderWidth > 0 ? `0 0 0 ${borderWidth}px ${borderColor}` : 'none',
                     outline: isSelected ? '2px solid #1890ff' : 'none',
@@ -276,7 +286,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                     fontFamily: (componentProps.fontFamily as string) || 'Raleway, sans-serif',
                     fontWeight: component.fontWeight ?? 500,
                     fontSize: `${component.fontSize ?? 14}px`,
-                    color: component.color || '#ffffff',
+                    color: component.color || '#333333',
                 };
 
                 if (!isVisible) {
@@ -302,6 +312,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                             boxSizing: 'border-box',
                             zIndex: component.zIndex || 1,
                             opacity,
+                            overflow: isSearchForm ? 'visible' : undefined,
                         }}
                         bounds="parent"
                         minWidth={minWidth}
@@ -313,13 +324,15 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                                 ? {
                                     cursor: 'ew-resize',
                                     width: '10px',
-                                    height: '40%',
-                                    top: '30%',
-                                    right: 0,
+                                    height: isSearchForm ? '28px' : '40%',
+                                    top: isSearchForm ? '50%' : '30%',
+                                    transform: isSearchForm ? 'translateY(-50%)' : undefined,
+                                    right: isSearchForm ? -5 : 0,
                                     background: '#1890ff',
                                     borderRadius: '4px 0 0 4px',
                                     border: '2px solid #fff',
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                    zIndex: 30,
                                 }
                                 : undefined,
                             bottomRight: !horizontalOnly

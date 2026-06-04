@@ -41,7 +41,7 @@ export const TableMappingSection = ({
 
     return (
         <PropertySection
-            title="Маппинг колонок"
+            title="Данные таблицы"
             action={(
                 <PropertyButton variant="ghost" onClick={onReload} disabled={!source} icon={<ReloadOutlined />}>
                     Обновить
@@ -55,7 +55,7 @@ export const TableMappingSection = ({
             )}
 
             {mappings.length === 0 && (
-                <PropertyAlert type="info" message="Маппинг не настроен — используются все поля источника" />
+                <PropertyAlert type="info" message="Колонки не заданы — показываются все поля источника" />
             )}
 
             {mappings.map((mapping, index) => (
@@ -64,7 +64,7 @@ export const TableMappingSection = ({
                         value={mapping.sourceField || ''}
                         onChange={(event) => updateMapping(index, { sourceField: event.target.value })}
                         options={[
-                            { value: '', label: 'Поле источника' },
+                            { value: '', label: 'Колонка источника' },
                             ...fields.map((field) => ({ value: field, label: field })),
                         ]}
                     />
@@ -107,7 +107,7 @@ export const TableMappingSection = ({
                     disabled={rows.length === 0}
                     onClick={() => onChange(buildDefaultTableMappings(rows))}
                 >
-                    Авто-маппинг всех полей
+                    Подставить все поля источника
                 </PropertyButton>
             </div>
         </PropertySection>
@@ -167,33 +167,6 @@ export const ChartMappingSection = ({
                 value={yField}
                 onChange={(event) => onChange({ xField, yField: event.target.value })}
                 options={fieldOptions}
-            />
-        </PropertySection>
-    );
-};
-
-interface DataMappingSectionProps {
-    dataSourceId: string;
-    sources: DataSource[];
-    onDataSourceChange: (dataSourceId: string) => void;
-}
-
-export const DataMappingSection = ({
-    dataSourceId,
-    sources,
-    onDataSourceChange,
-}: DataMappingSectionProps) => {
-    const dataSourceOptions = [
-        { value: 'none', label: 'Нет данных (ручное заполнение)' },
-        ...sources.map((src) => ({ value: src.id, label: src.name })),
-    ];
-
-    return (
-        <PropertySection title="Источник данных">
-            <PropertySelect
-                value={dataSourceId}
-                onChange={(event) => onDataSourceChange(event.target.value)}
-                options={dataSourceOptions}
             />
         </PropertySection>
     );

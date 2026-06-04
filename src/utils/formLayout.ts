@@ -10,12 +10,15 @@ export const TZ_DEFAULT_FORM_FIELDS: FormFieldDefinition[] = [
     { name: 'select', label: 'Список', type: 'select', options: ['Вариант 1', 'Вариант 2', 'Вариант 3'] },
 ];
 
-/** Фиксированная высота блока поиска (вертикальный ресайз отключён). */
-export const SEARCH_FIXED_HEIGHT = 72;
-export const SEARCH_MIN_WIDTH = 280;
-export const SEARCH_MAX_WIDTH = 720;
-export const DEFAULT_SEARCH_BAR_MAX_WIDTH = 560;
-const SEARCH_HORIZONTAL_PADDING = 32;
+/** Скругление контейнера поиска (как у Ant Design Input large). */
+export const SEARCH_FORM_BORDER_RADIUS = 8;
+
+/** Высота поля поиска (Ant Design Input large). */
+export const SEARCH_INPUT_HEIGHT = 40;
+export const SEARCH_COMPACT_MIN_WIDTH = 160;
+
+export const MIN_FORM_FIELD_WIDTH = 80;
+export const MAX_FORM_FIELD_WIDTH = 720;
 
 const PADDING_Y = 24;
 const FIELD_ROW_HEIGHT = 54;
@@ -25,44 +28,55 @@ const SUBMIT_ROW_HEIGHT = 36;
 export const isFormSearchMode = (props: Record<string, unknown> | undefined): boolean =>
     (props?.formMode as FormMode) === 'search';
 
-export const getSearchBarMaxWidth = (props: Record<string, unknown> | undefined): number => {
-    const raw = props?.searchBarMaxWidth;
-    return typeof raw === 'number' && raw > 0 ? raw : DEFAULT_SEARCH_BAR_MAX_WIDTH;
+export interface SearchFormMetrics {
+    fitContent: boolean;
+    padding: number;
+    height: number;
+    minWidth: number;
+    barWidth: number;
+}
+
+/** Размеры формы поиска: контейнер = поле, фон задаётся рамкой компонента. */
+export const resolveSearchFormMetrics = (componentWidth: number): SearchFormMetrics => {
+    const width = Math.max(SEARCH_COMPACT_MIN_WIDTH, componentWidth);
+    return {
+        fitContent: true,
+        padding: 0,
+        height: SEARCH_INPUT_HEIGHT,
+        minWidth: SEARCH_COMPACT_MIN_WIDTH,
+        barWidth: width,
+    };
 };
 
-/** Ширина строки поиска внутри компонента (растёт с компонентом до потолка). */
-export const getSearchBarDisplayWidth = (componentWidth: number, props?: Record<string, unknown>): number => {
-    const cap = getSearchBarMaxWidth(props);
-    const available = Math.max(160, componentWidth - SEARCH_HORIZONTAL_PADDING);
-    return Math.min(available, cap);
-};
+/** Ширина строки поиска внутри компонента. */
+export const getSearchBarDisplayWidth = (componentWidth: number): number =>
+    resolveSearchFormMetrics(componentWidth).barWidth;
 
 export interface FormSearchResizeConstraints {
     fixedHeight: number;
     minWidth: number;
-    maxWidth: number;
-    barMaxWidth: number;
+    lockHeight: boolean;
 }
 
-export const getFormSearchResizeConstraints = (
-    props: Record<string, unknown> | undefined
-): FormSearchResizeConstraints => ({
-    fixedHeight: SEARCH_FIXED_HEIGHT,
-    minWidth: SEARCH_MIN_WIDTH,
-    maxWidth: SEARCH_MAX_WIDTH,
-    barMaxWidth: getSearchBarMaxWidth(props),
-});
-
-export const clampSearchFormDimensions = (
-    width: number,
-    props?: Record<string, unknown>
-): { width: number; height: number } => {
-    const { minWidth, maxWidth, fixedHeight } = getFormSearchResizeConstraints(props);
+export const getFormSearchResizeConstraints = (componentWidth: number): FormSearchResizeConstraints => {
+    const metrics = resolveSearchFormMetrics(componentWidth);
     return {
-        width: Math.min(maxWidth, Math.max(minWidth, width)),
-        height: fixedHeight,
+        fixedHeight: metrics.height,
+        minWidth: metrics.minWidth,
+        lockHeight: true,
     };
 };
+
+export const clampSearchFormDimensions = (width: number): { width: number; height: number } => {
+    const metrics = resolveSearchFormMetrics(width);
+    return {
+        width: Math.max(metrics.minWidth, width),
+        height: metrics.height,
+    };
+};
+
+export const getWidestFormFieldWidth = (fields: FormFieldDefinition[]): number =>
+    Math.max(MIN_FORM_FIELD_WIDTH, ...fields.map((field) => field.fieldWidth ?? 0));
 
 export const calculateFormContentHeight = (params: {
     formMode: FormMode;
@@ -71,7 +85,7 @@ export const calculateFormContentHeight = (params: {
     width: number;
 }): number => {
     if (params.formMode === 'search') {
-        return SEARCH_FIXED_HEIGHT;
+        return resolveSearchFormMetrics(params.width).height;
     }
 
     const contentFields = params.fields.filter((field) => field.type !== 'submit');
@@ -111,7 +125,7 @@ export const resolveFormHeight = (
     const formMode = (props.formMode as FormMode) || 'default';
 
     if (formMode === 'search') {
-        return SEARCH_FIXED_HEIGHT;
+        return resolveSearchFormMetrics(component.width).height;
     }
 
     const layout = String(props.layout ?? 'vertical');
@@ -140,7 +154,7 @@ export const syncFormComponentHeight = (
 
     const props = component.props ?? {};
     if (isFormSearchMode(props)) {
-        const { width, height } = clampSearchFormDimensions(component.width, props);
+        const { width, height } = clampSearchFormDimensions(component.width);
         if (component.height !== height || component.width !== width) {
             updateComponent(component.id, { width, height });
         }

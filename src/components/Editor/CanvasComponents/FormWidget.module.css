@@ -26,23 +26,20 @@
     min-height: 100%;
     box-sizing: border-box;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    border-radius: 4px;
-}
-
-.formWidgetSearchFill {
-    /* backgroundColor задаётся inline из свойств компонента */
-}
-
-.formWidgetSearchTransparent {
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0;
+    border-radius: inherit;
+    overflow: hidden;
     background: transparent;
+    pointer-events: none;
 }
 
 .searchBarWrap {
     width: 100%;
     flex: 0 1 auto;
+    border-radius: inherit;
+    pointer-events: auto;
 }
 
 .searchInput {
@@ -51,6 +48,18 @@
 
 .searchInput :global(.ant-input-search) {
     width: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+}
+
+.searchInput :global(.ant-input-search .ant-input-affix-wrapper) {
+    border-start-start-radius: inherit;
+    border-end-start-radius: inherit;
+}
+
+.searchInput :global(.ant-input-search .ant-input-group-addon:last-child .ant-btn) {
+    border-start-end-radius: inherit;
+    border-end-end-radius: inherit;
 }
 
 .field {
@@ -59,6 +68,72 @@
     gap: 4px;
     flex: 0 0 auto;
     min-width: 120px;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.fieldEditing {
+    outline: 2px solid #1890ff;
+    outline-offset: 2px;
+    border-radius: 4px;
+    z-index: 2;
+}
+
+.fieldEditToolbar {
+    position: absolute;
+    top: -30px;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    z-index: 5;
+}
+
+.fieldEditToolbarLabel {
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+}
+
+.fieldEditToolbarHint {
+    font-size: 10px;
+    color: #999;
+    white-space: nowrap;
+}
+
+.fieldResizeHandle {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    width: 10px;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: #1890ff;
+    border-radius: 4px;
+    cursor: ew-resize;
+    opacity: 0.85;
+    z-index: 4;
+}
+
+.fieldResizeHandle:hover {
+    opacity: 1;
+}
+
+.fieldControl {
+    width: 100%;
+}
+
+.fieldControl :global(.ant-input),
+.fieldControl :global(.ant-input-number),
+.fieldControl :global(.ant-picker),
+.fieldControl :global(.ant-select-selector) {
+    font: inherit;
 }
 
 .fieldLabel {

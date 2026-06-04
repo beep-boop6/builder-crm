@@ -1,16 +1,17 @@
 import type { EditorComponent } from '@/store/editorStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
-import { useDataStore } from '@/store/dataStore';
-import type { FormFieldDefinition, FormMode, SearchBackgroundMode } from '@/types/form';
+import type { FormFieldDefinition, FormMode } from '@/types/form';
 import {
     clampSearchFormDimensions,
     getFormFieldsFromProps,
+    MAX_FORM_FIELD_WIDTH,
+    MIN_FORM_FIELD_WIDTH,
+    SEARCH_FORM_BORDER_RADIUS,
     syncFormComponentHeight,
     TZ_DEFAULT_FORM_FIELDS,
 } from '@/utils/formLayout';
 import { ComponentTargetsSection } from './ComponentTargetsSection';
-import { DataMappingSection } from './DataMappingSection';
 import {
     PropertySection,
     PropertySelect,
@@ -34,10 +35,14 @@ const FIELD_TYPE_OPTIONS = [
 export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
     const updateComponent = useEditorStore((state) => state.updateComponent);
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
-    const sources = useDataStore((state) => state.sources);
 
     const props = component.props ?? {};
     const fields = getFormFieldsFromProps(props);
+    const editingFieldName = props.editingFieldName as string | undefined;
+    const editingFieldIndex = editingFieldName
+        ? fields.findIndex((field) => field.name === editingFieldName)
+        : -1;
+    const editingField = editingFieldIndex >= 0 ? fields[editingFieldIndex] : undefined;
 
     const applyPatch = (patchProps: Record<string, unknown>) => {
         const nextProps = { ...props, ...patchProps };
@@ -84,9 +89,19 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
                     onChange={(event) => {
                         const mode = event.target.value;
                         if (mode === 'search') {
-                            const { width, height } = clampSearchFormDimensions(component.width, props);
-                            applyPatch({ formMode: mode });
-                            updateComponent(component.id, { width, height });
+                            const { width, height } = clampSearchFormDimensions(component.width);
+                            const borderWidth =
+                                typeof props.borderWidth === 'number' ? props.borderWidth : 0;
+                            applyPatch({
+                                formMode: mode,
+                                ...(borderWidth <= 0 ? { borderWidth: 1 } : {}),
+                            });
+                            updateComponent(component.id, {
+                                width,
+                                height,
+                                borderRadius: component.borderRadius ?? SEARCH_FORM_BORDER_RADIUS,
+                                backgroundColor: 'transparent',
+                            });
                             return;
                         }
                         applyPatch({ formMode: mode });
@@ -125,21 +140,8 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
                                 applyPatch({ fields: next });
                             }}
                         />
-                    </PropertySection>
-                    <PropertySection title="Оформление поиска">
-                        <PropertySelect
-                            value={(props.searchBackground as SearchBackgroundMode) || 'fill'}
-                            onChange={(event) =>
-                                applyPatch({ searchBackground: event.target.value as SearchBackgroundMode })
-                            }
-                            options={[
-                                { value: 'fill', label: 'Фон на всю область' },
-                                { value: 'transparent', label: 'Без фона (только поле)' },
-                            ]}
-                        />
                         <p className={styles.hintText}>
-                            Цвет фона — в «Внешний вид». Ширина блока: 280–720 px (только по горизонтали).
-                            Строка поиска растёт до 560 px, дальше остаётся по центру.
+                            Ширину — синей ручкой справа на холсте. Оформление — в блоке «Рамка».
                         </p>
                     </PropertySection>
                 </>
@@ -197,18 +199,49 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
                             onChange={(event) => applyPatch({ submitLabel: event.target.value })}
                         />
                     </PropertySection>
+
+                    {editingField ? (
+                        <PropertySection title={`Поле: ${editingField.label}`}>
+                            <PropertyTextInput
+                                value={String(editingField.fieldWidth ?? '')}
+                                placeholder={`Ширина (${MIN_FORM_FIELD_WIDTH}–${MAX_FORM_FIELD_WIDTH})`}
+                                onChange={(event) => {
+                                    const raw = event.target.value.trim();
+                                    updateField(editingFieldIndex, {
+                                        fieldWidth: raw ? Number(raw) : undefined,
+                                    });
+                                }}
+                            />
+                            <PropertyTextInput
+                                value={String(editingField.inputFontSize ?? component.fontSize ?? 14)}
+                                placeholder="Размер шрифта ввода"
+                                onChange={(event) => {
+                                    const size = Number(event.target.value);
+                                    if (!Number.isFinite(size)) {
+                                        return;
+                                    }
+                                    updateField(editingFieldIndex, {
+                                        inputFontSize: Math.min(32, Math.max(10, size)),
+                                    });
+                                }}
+                            />
+                            <p className={styles.hintText}>
+                                На холсте: двойной клик по полю — режим правки, перетащите синюю полоску справа
+                                для ширины.
+                            </p>
+                        </PropertySection>
+                    ) : (
+                        <p className={styles.hintText}>
+                            Двойной клик по полю на холсте — изменить ширину и шрифт ввода.
+                        </p>
+                    )}
                 </>
             )}
 
-            <DataMappingSection
-                dataSourceId={(props.dataSourceId as string) || 'none'}
-                sources={sources}
-                onDataSourceChange={(id) => applyPatch({ dataSourceId: id, formValues: {} })}
-            />
-
             <p className={styles.hintText}>
-                Источник данных подставляет значения в поля (первая строка). Поиск и кнопка «Отправить»
-                передают условия в привязанные таблицу и график на холсте.
+                {props.formMode === 'search'
+                    ? 'Поиск передаёт условие в привязанные таблицу и график на холсте.'
+                    : 'Кнопка «Отправить» передаёт значения полей в привязанные таблицу и график.'}
             </p>
 
             <ComponentTargetsSection

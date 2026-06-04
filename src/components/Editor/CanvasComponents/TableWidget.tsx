@@ -13,7 +13,16 @@ import styles from './TableWidget.module.css';
 interface TableWidgetProps {
     componentId: string;
     props: ComponentDataProps & Record<string, unknown>;
+    fontSize?: number;
+    fontWeight?: number;
+    color?: string;
+    fontFamily?: string;
+    backgroundColor?: string;
 }
+
+const stopCanvasBubble = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+};
 
 type TableColumn = { id: string; title: string };
 
@@ -31,7 +40,15 @@ const V_ALIGN_FLEX: Record<string, React.CSSProperties['alignItems']> = {
 let uidCounter = 0;
 const uid = () => `t${Date.now()}-${++uidCounter}`;
 
-export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) => {
+export const TableWidget: React.FC<TableWidgetProps> = ({
+    componentId,
+    props,
+    fontSize = 14,
+    fontWeight = 400,
+    color = '#000000',
+    fontFamily = 'Raleway, sans-serif',
+    backgroundColor = '#FFFFFF',
+}) => {
     const { sources, loadData } = useDataStore();
     const updateComponentProps = useEditorStore((state) => state.updateComponentProps);
     const selectedComponentId = useEditorStore((state) => state.selectedComponentId);
@@ -42,6 +59,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     const dataSourceId = props.dataSourceId;
+    const isDataBound = Boolean(dataSourceId && dataSourceId !== 'none');
     const source = sources.find((s) => s.id === dataSourceId);
 
     useEffect(() => {
@@ -69,8 +87,29 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
         ];
     }, [props.columns]);
 
-    // Колонки и строки для ОТОБРАЖЕНИЯ (могут быть отфильтрованы)
+    // Колонки и строки для отображения (могут быть отфильтрованы)
     const { columns, displayData, validationError } = useMemo(() => {
+        if (isDataBound) {
+            if (!source?.data || source.data.length === 0) {
+                return { columns: placeholderColumns, displayData: [] as DataRow[], validationError: null };
+            }
+            const mappings = props.columnMappings as TableColumnMapping[] | undefined;
+            const validation = validateTableMapping(source.data, mappings ?? []);
+            if (!validation.valid) {
+                return {
+                    columns: [{ id: 'error', title: 'Ошибка' }],
+                    displayData: [{ id: 'error-row', error: validation.error }] as DataRow[],
+                    validationError: validation.error ?? null,
+                };
+            }
+            const mapped = applyTableMapping(source.data, mappings);
+            return {
+                columns: mapped.columns as TableColumn[],
+                displayData: applyFiltersToRows(mapped.data as DataRow[], activeFilters),
+                validationError: null,
+            };
+        }
+
         if (props.customData && props.customColumns) {
             return {
                 columns: props.customColumns as TableColumn[],
@@ -78,24 +117,17 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                 validationError: null as string | null,
             };
         }
-        if (!source?.data || source.data.length === 0) {
-            return { columns: placeholderColumns, displayData: [] as DataRow[], validationError: null };
-        }
-        const mappings = props.columnMappings as TableColumnMapping[] | undefined;
-        const validation = validateTableMapping(source.data, mappings ?? []);
-        if (!validation.valid) {
-            return {
-                columns: [{ id: 'error', title: 'Ошибка' }],
-                displayData: [{ id: 'error-row', error: validation.error }] as DataRow[],
-                validationError: validation.error ?? null,
-            };
-        }
-        return {
-            columns: placeholderColumns,
-            displayData: applyFiltersToRows(applyTableMapping(source.data, mappings).data as DataRow[], activeFilters),
-            validationError: null,
-        };
-    }, [activeFilters, placeholderColumns, props.customColumns, props.customData, props.columnMappings, source?.data]);
+
+        return { columns: placeholderColumns, displayData: [] as DataRow[], validationError: null };
+    }, [
+        activeFilters,
+        isDataBound,
+        placeholderColumns,
+        props.customColumns,
+        props.customData,
+        props.columnMappings,
+        source?.data,
+    ]);
 
     // Исходные (нефильтрованные) строки — только для мутаций
     const sourceRows = useCallback((): DataRow[] => {
@@ -110,9 +142,12 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
 
     const persist = useCallback(
         (nextCols: TableColumn[], nextRows: DataRow[]) => {
+            if (isDataBound) {
+                return;
+            }
             updateComponentProps(componentId, { customColumns: nextCols, customData: nextRows });
         },
-        [componentId, updateComponentProps]
+        [componentId, isDataBound, updateComponentProps]
     );
 
     // Если ещё нет customData — возвращаем одну пустую строку для вставки
@@ -201,30 +236,43 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
     });
     const inputAlignStyle: React.CSSProperties = { textAlign: textAlign as React.CSSProperties['textAlign'] };
 
+    const typographyStyle: React.CSSProperties = {
+        fontSize,
+        fontWeight,
+        color,
+        fontFamily,
+    };
+
     // Строки для рендера: при пустых данных и фокусе — одна пустая строка с реальным id
     const renderRows: DataRow[] = useMemo(() => {
         if (displayData.length > 0) return displayData;
-        if (isTableSelected) return [{ id: uid(), ...Object.fromEntries(columns.map((c) => [c.id, ''])) }];
+        if (!isDataBound && isTableSelected) {
+            return [{ id: uid(), ...Object.fromEntries(columns.map((c) => [c.id, ''])) }];
+        }
         return [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [displayData, isTableSelected, columns.length]);
+    }, [displayData, isDataBound, isTableSelected, columns.length]);
 
     const gridTemplateColumns = `repeat(${columns.length}, minmax(0, 1fr))`;
 
     if (source?.isLoading) return <div className={styles.stateMessage}>Загрузка данных...</div>;
     if (source?.error) return <div className={`${styles.stateMessage} ${styles.stateError}`}>Ошибка: {source.error}</div>;
-    if (validationError) return <div className={`${styles.stateMessage} ${styles.stateWarning}`}>Маппинг: {validationError}</div>;
+    if (validationError) {
+        return (
+            <div className={`${styles.stateMessage} ${styles.stateWarning}`}>
+                Данные таблицы: {validationError}
+            </div>
+        );
+    }
 
     return (
         <div
             ref={wrapperRef}
-            className={`${styles.tableWrapper} ${isTableSelected ? styles.tableWrapperActive : ''}`}
+            className={styles.tableWrapper}
             data-table-id={componentId}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
+            style={{ backgroundColor }}
         >
-            <div className={styles.tableGrid}>
+            <div className={styles.tableGrid} style={typographyStyle}>
                 {/* Заголовки */}
                 <div className={styles.headerRow} style={{ gridTemplateColumns }}>
                     {columns.map((col, colIndex) => (
@@ -234,19 +282,23 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                         >
                             <input
                                 className={styles.editInput}
-                                style={inputAlignStyle}
+                                style={{ ...typographyStyle, ...inputAlignStyle }}
                                 value={col.title}
+                                readOnly={isDataBound}
                                 onChange={(e) => handleHeaderChange(col.id, e.target.value)}
                                 onFocus={() => setBandSelection(null)}
+                                onMouseDown={stopCanvasBubble}
+                                onClick={stopCanvasBubble}
                                 placeholder="Заголовок"
                             />
-                            {isTableSelected && (
+                            {isTableSelected && !isDataBound && (
                                 <>
                                     {/* Выбор колонки — верхняя полоска */}
                                     <button
                                         type="button"
                                         className={styles.colSelectStrip}
                                         tabIndex={-1}
+                                        onMouseDown={stopCanvasBubble}
                                         onClick={(e) => { e.stopPropagation(); setBandSelection({ type: 'column', colId: col.id }); }}
                                     />
                                     {/* + добавить колонку справа */}
@@ -254,6 +306,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                                         type="button"
                                         className={styles.insertHandleCol}
                                         title="Добавить столбец справа"
+                                        onMouseDown={stopCanvasBubble}
                                         onClick={(e) => { e.stopPropagation(); insertColumnAfter(colIndex); }}
                                     >
                                         <PlusOutlined />
@@ -264,6 +317,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                                             type="button"
                                             className={styles.deleteHandleCol}
                                             title="Удалить столбец"
+                                            onMouseDown={stopCanvasBubble}
                                             onClick={(e) => { e.stopPropagation(); removeColumn(col.id); }}
                                         >
                                             <CloseOutlined />
@@ -291,21 +345,25 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                                     <div className={styles.cellInner} style={cellAlignStyle()}>
                                         <input
                                             className={styles.editInput}
-                                            style={inputAlignStyle}
+                                            style={{ ...typographyStyle, ...inputAlignStyle }}
                                             value={String(row[col.id] ?? '')}
+                                            readOnly={isDataBound}
                                             onChange={(e) => handleCellChange(String(row.id), col.id, e.target.value)}
                                             onFocus={() => setBandSelection(null)}
+                                            onMouseDown={stopCanvasBubble}
+                                            onClick={stopCanvasBubble}
                                         />
                                     </div>
                                 </div>
                             ))}
-                            {isTableSelected && (
+                            {isTableSelected && !isDataBound && (
                                 <>
                                     {/* Выбор строки — левая полоска */}
                                     <button
                                         type="button"
                                         className={styles.rowSelectStrip}
                                         tabIndex={-1}
+                                        onMouseDown={stopCanvasBubble}
                                         onClick={(e) => { e.stopPropagation(); setBandSelection({ type: 'row', rowId: String(row.id) }); }}
                                     />
                                     {/* × удалить строку — при выборе */}
@@ -314,6 +372,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                                             type="button"
                                             className={styles.deleteHandleRow}
                                             title="Удалить строку"
+                                            onMouseDown={stopCanvasBubble}
                                             onClick={(e) => { e.stopPropagation(); removeRow(String(row.id)); }}
                                         >
                                             <CloseOutlined />
@@ -324,6 +383,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({ componentId, props }) 
                                         type="button"
                                         className={styles.insertHandleRow}
                                         title="Добавить строку ниже"
+                                        onMouseDown={stopCanvasBubble}
                                         onClick={(e) => { e.stopPropagation(); insertRowAfter(rowIndex); }}
                                     >
                                         <PlusOutlined />

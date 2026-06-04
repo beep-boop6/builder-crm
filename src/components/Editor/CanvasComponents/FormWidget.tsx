@@ -1,50 +1,32 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, type CSSProperties } from 'react';
 import { Button, DatePicker, Input, InputNumber, Select, message } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import type { EditorComponent } from '@/store/editorStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
-import { useDataStore } from '@/store/dataStore';
-import type { FormFieldDefinition, FormMode, SearchBackgroundMode } from '@/types/form';
+import type { FormFieldDefinition, FormMode } from '@/types/form';
 import {
     getFormFieldsFromProps,
-    getSearchBarDisplayWidth,
+    resolveSearchFormMetrics,
     syncFormComponentHeight,
 } from '@/utils/formLayout';
-import type { DataRow } from '@/utils/dataValidation';
+import { FormFieldBlock } from './FormFieldBlock';
 import styles from './FormWidget.module.css';
 
 interface FormWidgetProps {
     component: EditorComponent;
 }
 
-const buildValuesFromDataRow = (
-    fields: FormFieldDefinition[],
-    row: DataRow,
-    current: Record<string, string>
-): Record<string, string> => {
-    const next = { ...current };
-    fields.forEach((field) => {
-        if (field.type === 'submit') {
-            return;
-        }
-        const raw = row[field.name];
-        if (raw === null || raw === undefined) {
-            return;
-        }
-        if (!current[field.name]?.trim()) {
-            next[field.name] = String(raw);
-        }
-    });
-    return next;
+const stopCanvasBubble = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
 };
 
 export const FormWidget = ({ component }: FormWidgetProps) => {
     const updateComponentProps = useEditorStore((state) => state.updateComponentProps);
     const updateComponent = useEditorStore((state) => state.updateComponent);
+    const selectedComponentId = useEditorStore((state) => state.selectedComponentId);
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
-    const dataPrefilledRef = useRef<string | null>(null);
 
     const props = component.props ?? {};
     const formMode = (props.formMode as FormMode) || 'default';
@@ -55,14 +37,56 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
     const searchValue = String(props.searchValue ?? '');
     const formValues = (props.formValues as Record<string, string> | undefined) ?? {};
     const targetIds = (props.targetComponentIds as string[] | undefined) ?? [];
-    const dataSourceId = String(props.dataSourceId ?? 'none');
+    const textAlign = (props.textAlign as string) || 'left';
+    const editingFieldName = props.editingFieldName as string | undefined;
+    const isFormSelected = selectedComponentId === component.id;
 
-    const { sources, loadData } = useDataStore();
-    const source = sources.find((item) => item.id === dataSourceId);
+    const componentFontFamily = (props.fontFamily as string) || 'Raleway, sans-serif';
+    const componentFontSize = component.fontSize ?? 14;
+
+    const flexJustifyFromTextAlign = (): CSSProperties['justifyContent'] => {
+        if (textAlign === 'center') return 'center';
+        if (textAlign === 'right') return 'flex-end';
+        return 'flex-start';
+    };
+
+    const flexAlignFromTextAlign = (): CSSProperties['alignItems'] => {
+        if (textAlign === 'center') return 'center';
+        if (textAlign === 'right') return 'flex-end';
+        return 'flex-start';
+    };
+
+    const textAlignStyle: CSSProperties = {
+        textAlign: textAlign as CSSProperties['textAlign'],
+    };
 
     const patch = (patchProps: Record<string, unknown>) => {
         updateComponentProps(component.id, { ...props, ...patchProps });
     };
+
+    const updateFieldDef = useCallback((fieldName: string, fieldPatch: Partial<FormFieldDefinition>) => {
+        const latest =
+            useEditorStore.getState().components.find((item) => item.id === component.id) ?? component;
+        const latestProps = latest.props ?? {};
+        const latestFields = getFormFieldsFromProps(latestProps);
+        updateComponentProps(component.id, {
+            ...latestProps,
+            fields: latestFields.map((item) =>
+                item.name === fieldName ? { ...item, ...fieldPatch } : item
+            ),
+        });
+    }, [component, updateComponentProps]);
+
+    useEffect(() => {
+        if (!isFormSelected && editingFieldName) {
+            const latest =
+                useEditorStore.getState().components.find((item) => item.id === component.id) ?? component;
+            updateComponentProps(component.id, {
+                ...(latest.props ?? {}),
+                editingFieldName: undefined,
+            });
+        }
+    }, [component, editingFieldName, isFormSelected, updateComponentProps]);
 
     useLayoutEffect(() => {
         const latest = useEditorStore.getState().components.find((item) => item.id === component.id) ?? component;
@@ -70,43 +94,13 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
     }, [
         component.id,
         component.width,
-        fields.length,
+        component.height,
+        fields,
         formMode,
         layout,
         getComponentDefinition,
         updateComponent,
     ]);
-
-    useEffect(() => {
-        if (dataSourceId === 'none' || !source) {
-            return;
-        }
-        if (!source.data && !source.isLoading && !source.error) {
-            void loadData(dataSourceId);
-        }
-    }, [dataSourceId, source, loadData]);
-
-    useEffect(() => {
-        if (dataSourceId === 'none' || !source?.data?.length) {
-            dataPrefilledRef.current = null;
-            return;
-        }
-        const cacheKey = `${dataSourceId}:${source.lastLoadedAt ?? source.data.length}`;
-        if (dataPrefilledRef.current === cacheKey) {
-            return;
-        }
-        dataPrefilledRef.current = cacheKey;
-        const row = source.data[0];
-        const currentValues = (component.props?.formValues as Record<string, string> | undefined) ?? {};
-        const merged = buildValuesFromDataRow(fields, row, currentValues);
-        const changed = fields.some((field) => merged[field.name] !== currentValues[field.name]);
-        if (changed) {
-            updateComponentProps(component.id, {
-                ...component.props,
-                formValues: merged,
-            });
-        }
-    }, [component.id, component.props, dataSourceId, fields, source?.data, source?.lastLoadedAt, updateComponentProps]);
 
     const setFieldValue = (name: string, value: string) => {
         patch({
@@ -142,24 +136,37 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
         return parsed.isValid() ? parsed : null;
     };
 
+    const getFieldInputStyle = (field: FormFieldDefinition): CSSProperties => ({
+        fontSize: field.inputFontSize ?? componentFontSize,
+        fontFamily: componentFontFamily,
+    });
+
+    const getFieldWidthStyle = (field: FormFieldDefinition): CSSProperties =>
+        field.fieldWidth
+            ? { width: field.fieldWidth, maxWidth: '100%', flex: '0 0 auto' }
+            : { width: '100%', maxWidth: '100%' };
+
     if (formMode === 'search') {
         const searchField = fields.find((field) => field.name === searchFieldKey) ?? fields[0];
-        const searchBackground = (props.searchBackground as SearchBackgroundMode) || 'fill';
-        const fillArea = searchBackground === 'fill';
-        const barWidth = getSearchBarDisplayWidth(component.width, props);
+        const metrics = resolveSearchFormMetrics(component.width);
 
         return (
             <div
-                className={`${styles.formWidgetSearch} ${fillArea ? styles.formWidgetSearchFill : styles.formWidgetSearchTransparent}`}
-                style={fillArea ? { backgroundColor: component.backgroundColor || '#ffffff' } : undefined}
+                className={styles.formWidgetSearch}
+                style={{ backgroundColor: 'transparent' }}
             >
-                <div className={styles.searchBarWrap} style={{ width: barWidth, maxWidth: '100%' }}>
+                <div
+                    className={styles.searchBarWrap}
+                    style={{ width: metrics.barWidth, maxWidth: '100%' }}
+                >
                     <Input.Search
                         size="large"
                         allowClear
                         className={styles.searchInput}
                         placeholder={searchField?.placeholder ?? 'Поиск...'}
                         value={searchValue}
+                        onMouseDown={stopCanvasBubble}
+                        onClick={stopCanvasBubble}
                         onChange={(event) => patch({ searchValue: event.target.value })}
                         onSearch={(value) => {
                             notifyIfUnlinked();
@@ -171,70 +178,118 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
         );
     }
 
-        return (
+    const isHorizontalLayout = layout === 'horizontal';
+
+    const renderFieldControl = (field: FormFieldDefinition) => {
+        const inputStyle = getFieldInputStyle(field);
+
+        if (field.type === 'text') {
+            return (
+                <Input
+                    size="small"
+                    style={inputStyle}
+                    placeholder={field.placeholder}
+                    value={formValues[field.name] ?? ''}
+                    onChange={(event) => setFieldValue(field.name, event.target.value)}
+                    onMouseDown={stopCanvasBubble}
+                    onClick={stopCanvasBubble}
+                />
+            );
+        }
+        if (field.type === 'number') {
+            return (
+                <InputNumber
+                    size="small"
+                    className={styles.fullWidth}
+                    style={inputStyle}
+                    placeholder={field.placeholder}
+                    value={formValues[field.name] ? Number(formValues[field.name]) : undefined}
+                    onChange={(value) =>
+                        setFieldValue(
+                            field.name,
+                            value === null || value === undefined ? '' : String(value)
+                        )
+                    }
+                    onMouseDown={stopCanvasBubble}
+                    onClick={stopCanvasBubble}
+                />
+            );
+        }
+        if (field.type === 'date') {
+            return (
+                <DatePicker
+                    size="small"
+                    className={styles.fullWidth}
+                    style={inputStyle}
+                    value={parseDateValue(formValues[field.name])}
+                    onChange={(_date: Dayjs | null, dateString) =>
+                        setFieldValue(
+                            field.name,
+                            Array.isArray(dateString) ? dateString[0] : dateString
+                        )
+                    }
+                    onMouseDown={stopCanvasBubble}
+                    onClick={stopCanvasBubble}
+                />
+            );
+        }
+        if (field.type === 'select') {
+            return (
+                <Select
+                    size="small"
+                    className={styles.fullWidth}
+                    style={inputStyle}
+                    value={formValues[field.name] || undefined}
+                    onChange={(value) => setFieldValue(field.name, value)}
+                    options={(field.options ?? []).map((option) => ({
+                        value: option,
+                        label: option,
+                    }))}
+                    onMouseDown={stopCanvasBubble}
+                    onClick={stopCanvasBubble}
+                />
+            );
+        }
+        return null;
+    };
+
+    return (
         <div
-            className={`${styles.formWidget} ${styles.formWidgetDefault} ${layout === 'horizontal' ? styles.horizontal : ''}`}
-            style={{ backgroundColor: component.backgroundColor || '#fff' }}
+            className={`${styles.formWidget} ${styles.formWidgetDefault} ${isHorizontalLayout ? styles.horizontal : ''}`}
+            style={{
+                backgroundColor: component.backgroundColor || '#fff',
+                alignItems: isHorizontalLayout ? undefined : flexAlignFromTextAlign(),
+                justifyContent: isHorizontalLayout ? flexJustifyFromTextAlign() : undefined,
+            }}
         >
             {fields
                 .filter((field) => field.type !== 'submit')
                 .map((field) => (
-                    <div key={field.name} className={styles.field}>
-                        <label className={styles.fieldLabel}>
-                            {field.label}
-                            {field.required ? ' *' : ''}
-                        </label>
-                        {field.type === 'text' ? (
-                            <Input
-                                size="small"
-                                placeholder={field.placeholder}
-                                value={formValues[field.name] ?? ''}
-                                onChange={(event) => setFieldValue(field.name, event.target.value)}
-                            />
-                        ) : null}
-                        {field.type === 'number' ? (
-                            <InputNumber
-                                size="small"
-                                className={styles.fullWidth}
-                                placeholder={field.placeholder}
-                                value={formValues[field.name] ? Number(formValues[field.name]) : undefined}
-                                onChange={(value) =>
-                                    setFieldValue(
-                                        field.name,
-                                        value === null || value === undefined ? '' : String(value)
-                                    )
-                                }
-                            />
-                        ) : null}
-                        {field.type === 'date' ? (
-                            <DatePicker
-                                size="small"
-                                className={styles.fullWidth}
-                                value={parseDateValue(formValues[field.name])}
-                                onChange={(_date: Dayjs | null, dateString) =>
-                                    setFieldValue(
-                                        field.name,
-                                        Array.isArray(dateString) ? dateString[0] : dateString
-                                    )
-                                }
-                            />
-                        ) : null}
-                        {field.type === 'select' ? (
-                            <Select
-                                size="small"
-                                className={styles.fullWidth}
-                                value={formValues[field.name] || undefined}
-                                onChange={(value) => setFieldValue(field.name, value)}
-                                options={(field.options ?? []).map((option) => ({
-                                    value: option,
-                                    label: option,
-                                }))}
-                            />
-                        ) : null}
-                    </div>
+                    <FormFieldBlock
+                        key={field.name}
+                        field={field}
+                        isFormSelected={isFormSelected}
+                        isEditing={editingFieldName === field.name}
+                        textAlignStyle={textAlignStyle}
+                        inputFontStyle={getFieldInputStyle(field)}
+                        fieldWidthStyle={getFieldWidthStyle(field)}
+                        onBeginEdit={() => patch({ editingFieldName: field.name })}
+                        onEndEdit={() => patch({ editingFieldName: undefined })}
+                        onUpdateField={(fieldPatch) => updateFieldDef(field.name, fieldPatch)}
+                    >
+                        {renderFieldControl(field)}
+                    </FormFieldBlock>
                 ))}
-            <div className={styles.submitRow}>
-                <Button type="primary" size="small" onClick={applyToLinkedComponents}>
+            <div
+                className={styles.submitRow}
+                style={{ display: 'flex', justifyContent: flexJustifyFromTextAlign() }}
+            >
+                <Button
+                    type="primary"
+                    size="small"
+                    onClick={applyToLinkedComponents}
+                    onMouseDown={stopCanvasBubble}
+                >
                     {submitLabel}
                 </Button>
             </div>
