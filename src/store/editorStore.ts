@@ -98,6 +98,8 @@ interface EditorState {
     duplicateComponent: (id: string, offset?: { x: number; y: number }) => void;
     addComponentFromSnapshot: (snapshot: Omit<EditorComponent, 'id' | 'x' | 'y'>, position: { x: number; y: number }) => void;
     updateComponent: (id: string, updates: Partial<EditorComponent>, options?: { skipHistory?: boolean }) => void;
+    /** SaveElementPositionAsync — после drag/resize end на холсте. */
+    persistComponentPosition: (id: string) => void;
     updateComponentProps: (id: string, props: Record<string, any>) => void;
     deleteComponent: (id: string) => void;
     bringToFront: (id: string) => void;
@@ -251,6 +253,17 @@ export const useEditorStore = create<EditorState>()(
                      emitComponentChange(updatedComponentData, get);
                  }
              },
+
+            persistComponentPosition: (id) => {
+                const state = get();
+                const pageId = state.currentPageId;
+                const component = state.components.find((item) => item.id === id);
+                if (!component || !pageId) {
+                    return;
+                }
+                const jsonState = serializeForSync(component, pageId);
+                void signalrService.persistElement(component.id, pageId, jsonState);
+            },
 
              updateComponentProps: (id, props) => {
                  get().saveHistory();

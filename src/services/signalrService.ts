@@ -60,15 +60,24 @@ class SignalRService {
         }
     }
 
-    // Сохранение финальной позиции элемента в базу данных (когда пользователь отпустил элемент)
-    public async saveElementPosition(elementId: string, projectId: string): Promise<boolean> {
+    /** Сохранение позиции/размера в БД после отпускания мыши (drag/resize end). */
+    public async saveElementPosition(
+        elementId: string,
+        pageId: string,
+        jsonState: string
+    ): Promise<boolean> {
         if (!this.isConnected()) {
             console.warn("SignalR: saveElementPosition пропущен — нет подключения к хабу.");
             return false;
         }
 
         try {
-            await this.connection!.invoke("SaveElementPositionAsync", elementId, projectId);
+            await this.connection!.invoke(
+                "SaveElementPositionAsync",
+                elementId,
+                pageId,
+                jsonState
+            );
             return true;
         } catch (err) {
             console.error("SignalR: Не удалось сохранить позицию элемента в БД:", err);
@@ -76,13 +85,13 @@ class SignalRService {
         }
     }
 
-    /** Сначала актуальное состояние, затем сохранение в БД (порядок важен для бэкенда). */
-    public async persistElement(elementId: string, projectId: string, jsonState: string): Promise<boolean> {
+    /** Актуальное состояние в памяти хаба + сохранение позиции (после drag end). */
+    public async persistElement(elementId: string, pageId: string, jsonState: string): Promise<boolean> {
         const stateSent = await this.sendElementState(elementId, jsonState);
         if (!stateSent) {
             return false;
         }
-        return this.saveElementPosition(elementId, projectId);
+        return this.saveElementPosition(elementId, pageId, jsonState);
     }
 
     public async createPage(pageId: string, name: string): Promise<void> {
@@ -161,6 +170,12 @@ class SignalRService {
 
     public onDeletePage(callback: (pageId: string) => void): void {
         this.connection?.on("DeletePage", callback);
+    }
+
+    public onElementPositionUpdated(
+        callback: (elementId: string, pageId: string, jsonState: string) => void
+    ): void {
+        this.connection?.on("ElementPositionUpdated", callback);
     }
 }
 
