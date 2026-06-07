@@ -51,7 +51,7 @@ const parseComponent = (
 };
 
 export const elementService = {
-    /** Только чтение при загрузке проекта (без мутаций). */
+    /** Только чтение при загрузке проекта. */
     getByPageId: async (pageId: string): Promise<BackendElement[]> => {
         if (isMockEnabled) {
             return [];
@@ -64,24 +64,11 @@ export const elementService = {
         return unwrapElementList(response.data);
     },
 
-    create: async (pageId: string, elementId: string, json: string): Promise<void> => {
-        const ok = await signalrService.createElement(pageId, elementId, json);
-        if (!ok) {
-            throw new Error('Не удалось создать элемент через хаб');
-        }
-    },
-
-    update: async (elementId: string, json: string): Promise<void> => {
-        const ok = await signalrService.updateElement(elementId, json);
-        if (!ok) {
-            throw new Error('Не удалось обновить элемент через хаб');
-        }
-    },
-
-    savePosition: async (pageId: string, elementId: string, json: string): Promise<void> => {
+    /** Create/update через хаб SaveElementPositionAsync. */
+    save: async (pageId: string, elementId: string, json: string): Promise<void> => {
         const ok = await signalrService.saveElementPosition(elementId, pageId, json);
         if (!ok) {
-            throw new Error('Не удалось сохранить позицию элемента через хаб');
+            throw new Error('Не удалось сохранить элемент через хаб');
         }
     },
 
@@ -99,7 +86,7 @@ export const elementService = {
         return dedupeComponentsById(components);
     },
 
-    /** Первичная выгрузка компонентов шаблона — CreateElementAsync, без REST. */
+    /** Первичная выгрузка компонентов шаблона — только хаб, без REST. */
     syncPagesViaHub: async (pages: Page[]): Promise<void> => {
         if (isMockEnabled) {
             return;
@@ -112,7 +99,7 @@ export const elementService = {
 
         for (const page of pages) {
             for (const component of dedupeComponentsById(page.components)) {
-                await elementService.create(
+                await elementService.save(
                     page.id,
                     component.id,
                     serializeComponent(component, page.id)
