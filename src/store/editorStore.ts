@@ -48,26 +48,19 @@ const scheduleSaveToProject = (get: () => EditorState) => {
 const serializeForSync = (component: EditorComponent, pageId: string | null) =>
     JSON.stringify({ ...component, pageId: pageId ?? undefined });
 
-const syncComponentCreate = (component: EditorComponent, pageId: string | null) => {
+const syncComponentToHub = (component: EditorComponent, pageId: string | null) => {
     if (!pageId) {
         return;
     }
-    void signalrService.createElement(
-        pageId,
+    void signalrService.saveElementPosition(
         component.id,
+        pageId,
         serializeForSync(component, pageId)
     );
 };
 
-const syncComponentUpdate = (component: EditorComponent, pageId: string | null) => {
-    if (!pageId) {
-        return;
-    }
-    void signalrService.updateElement(component.id, serializeForSync(component, pageId));
-};
-
 const emitComponentChange = (component: EditorComponent, get: () => EditorState) => {
-    syncComponentUpdate(component, get().currentPageId);
+    syncComponentToHub(component, get().currentPageId);
 };
 
 const nextZIndex = (components: EditorComponent[]) =>
@@ -227,7 +220,7 @@ export const useEditorStore = create<EditorState>()(
                      };
                  });
 
-                 syncComponentCreate(newComponent, get().currentPageId);
+                 syncComponentToHub(newComponent, get().currentPageId);
              },
 
             addComponentFromSnapshot: (snapshot, position) => {

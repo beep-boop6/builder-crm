@@ -66,41 +66,7 @@ class SignalRService {
         return this.isConnected();
     }
 
-    public async createElement(
-        pageId: string,
-        elementId: string,
-        jsonState: string
-    ): Promise<boolean> {
-        if (!(await this.ensureConnected())) {
-            console.warn('SignalR: createElement пропущен — нет подключения к хабу.');
-            return false;
-        }
-
-        try {
-            await this.connection!.invoke('CreateElementAsync', pageId, elementId, jsonState);
-            return true;
-        } catch (err) {
-            console.error('SignalR: Не удалось создать элемент:', err);
-            return false;
-        }
-    }
-
-    public async updateElement(elementId: string, jsonState: string): Promise<boolean> {
-        if (!(await this.ensureConnected())) {
-            console.warn('SignalR: updateElement пропущен — нет подключения к хабу.');
-            return false;
-        }
-
-        try {
-            await this.connection!.invoke('UpdateElementAsync', elementId, jsonState);
-            return true;
-        } catch (err) {
-            console.error('SignalR: Не удалось обновить элемент:', err);
-            return false;
-        }
-    }
-
-    /** Сохранение геометрии после drag/resize. */
+    /** Создание и обновление элемента — SaveElementPositionAsync (upsert в БД на бэкенде). */
     public async saveElementPosition(
         elementId: string,
         pageId: string,
