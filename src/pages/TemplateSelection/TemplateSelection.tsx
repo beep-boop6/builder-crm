@@ -5,7 +5,6 @@ import { TemplateCarousel } from './TemplateCarousel';
 import { useTemplateStore } from '@/store/templateStore';
 import { useProjectStore } from '@/store/projectStore';
 import { projectService } from '@/services/projectService';
-import { elementService } from '@/services/elementService';
 import { TEMPLATE_TYPES } from '@/constants/templateTypes';
 import type { ProjectTemplate } from '@/types/template';
 import styles from './TemplateSelection.module.css';
@@ -27,15 +26,17 @@ const TemplateSelectionPage = () => {
     const handleUseTemplate = async (template: ProjectTemplate) => {
         try {
             const project = await createProject(template.name, template.navigationType);
-            const pages = template.pages.map((page) => ({
-                ...page,
-                components: page.components.map((component) => ({ ...component })),
-            }));
-            await projectService.update(project.id, { pages });
-            await elementService.syncPagesViaHub(pages);
+            const defaultPageId = project.pages[0]?.id;
+
+            if (!defaultPageId) {
+                throw new Error('У проекта нет страницы по умолчанию');
+            }
+
+            await projectService.applyTemplate(project.id, template.pages, defaultPageId);
             message.success('Проект создан из шаблона');
             navigate(`/builder/${project.id}`);
-        } catch {
+        } catch (error) {
+            console.error('applyTemplate failed:', error);
             message.error('Не удалось создать проект из шаблона');
         }
     };

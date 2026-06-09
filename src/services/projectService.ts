@@ -4,6 +4,7 @@ import { isMockEnabled } from '@/config/env';
 import { requestWithFallback } from './api';
 import { elementService } from './elementService';
 import { pageService } from './pageService';
+import { signalrService } from './signalrService';
 import { syncProjectPages } from './projectSyncService';
 import {
     fromBackendNavigation,
@@ -176,5 +177,37 @@ export const projectService = {
             method: 'DELETE',
             paths: [`/projects/${id}`],
         });
+    },
+
+    /**
+     * Применяет шаблон к уже созданному проекту:
+     * 1) привязывает страницы шаблона к реальным id страниц на бэкенде;
+     * 2) синхронизирует метаданные страниц через REST;
+     * 3) сохраняет компоненты через SignalR SaveElementPositionAsync.
+     */
+    applyTemplate: async (
+        projectId: string,
+        templatePages: Page[],
+        defaultPageId: string
+    ): Promise<Project> => {
+        if (isMockEnabled) {
+            return mockApi.updateProject(projectId, { pages: templatePages });
+        }
+
+        const pages = templatePages.map((page, index) => ({
+            ...page,
+            id: index === 0 ? defaultPageId : page.id,
+            components: page.components.map((component) => ({ ...component })),
+        }));
+
+        const updated = await projectService.update(projectId, { pages });
+
+        if (!(await signalrService.ensureConnected())) {
+            throw new Error('Не удалось подключиться к конструктору (SignalR)');
+        }
+
+        await elementService.syncPagesViaHub(updated.pages);
+
+        return updated;
     },
 };

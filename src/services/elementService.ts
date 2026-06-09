@@ -93,8 +93,7 @@ export const elementService = {
         }
 
         if (!(await signalrService.ensureConnected())) {
-            console.warn('elementService.syncPagesViaHub: нет подключения к хабу');
-            return;
+            throw new Error('Нет подключения к SignalR хабу');
         }
 
         for (const page of pages) {
