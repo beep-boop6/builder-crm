@@ -60,3 +60,9 @@
     color: #888;
     flex-shrink: 0;
 }
+
+.noTableHint {
+    font-size: 11px;
+    color: #fa8c16;
+    line-height: 1.3;
+}

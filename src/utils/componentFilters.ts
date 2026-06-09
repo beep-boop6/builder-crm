@@ -58,12 +58,13 @@ export const collectFiltersForTarget = (
                 return;
             }
             const value = String(props.value ?? '').trim();
-            if (!value) {
+            const fieldKey = String(props.fieldKey ?? '').trim();
+            if (!value || !fieldKey) {
                 return;
             }
             filters.push({
                 filterType: (props.filterType as FilterType) || 'field',
-                fieldKey: String(props.fieldKey ?? 'status'),
+                fieldKey,
                 value,
                 valueTo: props.valueTo ? String(props.valueTo) : undefined,
             });
