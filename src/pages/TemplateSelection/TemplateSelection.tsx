@@ -6,6 +6,7 @@ import { useTemplateStore } from '@/store/templateStore';
 import { useProjectStore } from '@/store/projectStore';
 import { projectService } from '@/services/projectService';
 import { TEMPLATE_TYPES } from '@/constants/templateTypes';
+import { getErrorMessage } from '@/utils/getErrorMessage';
 import type { ProjectTemplate } from '@/types/template';
 import styles from './TemplateSelection.module.css';
 
@@ -37,7 +38,7 @@ const TemplateSelectionPage = () => {
             navigate(`/builder/${project.id}`);
         } catch (error) {
             console.error('applyTemplate failed:', error);
-            message.error('Не удалось создать проект из шаблона');
+            message.error(getErrorMessage(error, 'Не удалось создать проект из шаблона'));
         }
     };
 

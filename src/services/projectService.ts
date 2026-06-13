@@ -1,6 +1,6 @@
 import { mockApi } from './mockApi';
 import { Project, Page } from '../types';
-import { isMockEnabled } from '@/config/env';
+import { backendBaseUrl, isMockEnabled } from '@/config/env';
 import { requestWithFallback } from './api';
 import { elementService } from './elementService';
 import { pageService } from './pageService';
@@ -194,6 +194,14 @@ export const projectService = {
             return mockApi.updateProject(projectId, { pages: templatePages });
         }
 
+        // SignalR нужен до открытия редактора — компоненты шаблона пишутся через хаб.
+        const connected = await signalrService.ensureConnected(30000);
+        if (!connected) {
+            throw new Error(
+                `Не удалось подключиться к SignalR (${backendBaseUrl}/crmConstructorHub). Проверьте, что бэкенд запущен.`
+            );
+        }
+
         const pages = templatePages.map((page, index) => ({
             ...page,
             id: index === 0 ? defaultPageId : page.id,
@@ -201,10 +209,6 @@ export const projectService = {
         }));
 
         const updated = await projectService.update(projectId, { pages });
-
-        if (!(await signalrService.ensureConnected())) {
-            throw new Error('Не удалось подключиться к конструктору (SignalR)');
-        }
 
         await elementService.syncPagesViaHub(updated.pages);
 

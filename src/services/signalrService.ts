@@ -1,30 +1,62 @@
 import * as signalR from "@microsoft/signalr";
 import { backendBaseUrl } from '@/config/env';
 
+const HUB_URL = `${backendBaseUrl}/crmConstructorHub`;
+
+const HUB_TRANSPORTS =
+    signalR.HttpTransportType.WebSockets
+    | signalR.HttpTransportType.ServerSentEvents
+    | signalR.HttpTransportType.LongPolling;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 class SignalRService {
     private connection: signalR.HubConnection | null = null;
+    private connectionPromise: Promise<void> | null = null;
+
+    private buildConnection(): signalR.HubConnection {
+        return new signalR.HubConnectionBuilder()
+            .withUrl(HUB_URL, {
+                skipNegotiation: false,
+                transport: HUB_TRANSPORTS,
+            })
+            .withAutomaticReconnect([0, 2000, 5000, 10000])
+            .configureLogging(signalR.LogLevel.Warning)
+            .build();
+    }
 
     public async startConnection(): Promise<void> {
-        if (this.connection?.state === signalR.HubConnectionState.Connected) {
+        if (this.isConnected()) {
             return;
         }
 
-        this.connection = new signalR.HubConnectionBuilder()
-            .withUrl(`${backendBaseUrl}/crmConstructorHub`, {
-                skipNegotiation: false,
-                transport: signalR.HttpTransportType.WebSockets,
-            })
-            .withAutomaticReconnect([0, 2000, 5000, 10000])
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
-
-        try {
-            await this.connection.start();
-            console.log("🟢 SignalR: Подключение успешно установлено.");
-        } catch (err) {
-            console.error("🔴 SignalR: Ошибка при подключении:", err);
-            setTimeout(() => this.startConnection(), 5000);
+        if (this.connectionPromise) {
+            await this.connectionPromise;
+            return;
         }
+
+        this.connectionPromise = this.connectOnce();
+        try {
+            await this.connectionPromise;
+        } finally {
+            this.connectionPromise = null;
+        }
+    }
+
+    private async connectOnce(): Promise<void> {
+        if (this.connection) {
+            try {
+                await this.connection.stop();
+            } catch {
+                // ignore stale connection shutdown errors
+            }
+            this.connection = null;
+        }
+
+        const connection = this.buildConnection();
+        await connection.start();
+        this.connection = connection;
+        console.log('🟢 SignalR: подключение установлено.');
     }
 
     public clearEventHandlers(): void {
@@ -50,7 +82,7 @@ class SignalRService {
             this.clearEventHandlers();
             await this.connection.stop();
             this.connection = null;
-            console.log("🟡 SignalR: Подключение остановлено.");
+            console.log('🟡 SignalR: подключение остановлено.');
         }
     }
 
@@ -58,11 +90,27 @@ class SignalRService {
         return this.connection?.state === signalR.HubConnectionState.Connected;
     }
 
-    public async ensureConnected(): Promise<boolean> {
-        if (this.isConnected()) {
-            return true;
+    /** Повторные попытки подключения (нужно до applyTemplate — редактор ещё не открыт). */
+    public async ensureConnected(timeoutMs = 20000): Promise<boolean> {
+        const deadline = Date.now() + timeoutMs;
+
+        while (Date.now() < deadline) {
+            if (this.isConnected()) {
+                return true;
+            }
+
+            try {
+                await this.startConnection();
+                if (this.isConnected()) {
+                    return true;
+                }
+            } catch (err) {
+                console.warn('SignalR: повтор подключения...', err);
+            }
+
+            await sleep(1000);
         }
-        await this.startConnection();
+
         return this.isConnected();
     }
 
@@ -86,7 +134,7 @@ class SignalRService {
             );
             return true;
         } catch (err) {
-            console.error('SignalR: Не удалось сохранить позицию элемента:', err);
+            console.error('SignalR: не удалось сохранить элемент:', err);
             return false;
         }
     }
@@ -99,7 +147,7 @@ class SignalRService {
         try {
             await this.connection!.invoke('CreatePageAsync', pageId, name);
         } catch (err) {
-            console.error('SignalR: Не удалось уведомить о создании страницы:', err);
+            console.error('SignalR: не удалось уведомить о создании страницы:', err);
         }
     }
 
@@ -111,7 +159,7 @@ class SignalRService {
         try {
             await this.connection!.invoke('RenamePageAsync', pageId, name);
         } catch (err) {
-            console.error('SignalR: Не удалось уведомить о переименовании страницы:', err);
+            console.error('SignalR: не удалось уведомить о переименовании страницы:', err);
         }
     }
 
@@ -123,7 +171,7 @@ class SignalRService {
         try {
             await this.connection!.invoke('DeletePageAsync', pageId);
         } catch (err) {
-            console.error('SignalR: Не удалось уведомить об удалении страницы:', err);
+            console.error('SignalR: не удалось уведомить об удалении страницы:', err);
         }
     }
 
@@ -137,7 +185,7 @@ class SignalRService {
             await this.connection!.invoke('DeleteElementAsync', elementId);
             return true;
         } catch (err) {
-            console.error('SignalR: Не удалось удалить элемент:', err);
+            console.error('SignalR: не удалось удалить элемент:', err);
             return false;
         }
     }

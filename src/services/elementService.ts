@@ -92,17 +92,18 @@ export const elementService = {
             return;
         }
 
-        if (!(await signalrService.ensureConnected())) {
-            throw new Error('Нет подключения к SignalR хабу');
-        }
-
         for (const page of pages) {
             for (const component of dedupeComponentsById(page.components)) {
-                await elementService.save(
-                    page.id,
+                const ok = await signalrService.saveElementPosition(
                     component.id,
+                    page.id,
                     serializeComponent(component, page.id)
                 );
+                if (!ok) {
+                    throw new Error(
+                        `Не удалось сохранить компонент «${component.text || component.type}» (${component.id})`
+                    );
+                }
             }
         }
     },
