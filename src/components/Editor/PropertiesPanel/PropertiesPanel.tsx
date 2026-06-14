@@ -3,7 +3,8 @@ import { message } from 'antd';
 import { useEditorStore, EditorComponent } from '@/store/editorStore';
 import { useDataStore } from '@/store/dataStore';
 import { useComponentStore } from '@/store/componentStore';
-import { buildDefaultTableMappings } from '@/utils/dataMapping';
+import { applyTableMapping, buildDefaultTableMappings, ensureTableRowIds } from '@/utils/dataMapping';
+import type { DataRow } from '@/utils/dataValidation';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { isCardComponentType } from '@/utils/componentFilters';
 import { SavePresetModal } from './SavePresetModal';
@@ -119,12 +120,14 @@ export const PropertiesPanel = () => {
             ?? props;
 
         if (componentType === 'table') {
+            const columnMappings = buildDefaultTableMappings(source.data);
+            const mapped = applyTableMapping(source.data, columnMappings);
             updateComponentProps(selectedComponent.id, {
                 ...latestProps,
                 dataSourceId,
-                customData: undefined,
-                customColumns: undefined,
-                columnMappings: buildDefaultTableMappings(source.data),
+                columnMappings,
+                customColumns: mapped.columns,
+                customData: ensureTableRowIds(mapped.data as DataRow[]),
             });
             return;
         }

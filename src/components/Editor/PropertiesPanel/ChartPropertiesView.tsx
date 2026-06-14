@@ -72,6 +72,7 @@ export const ChartPropertiesView = ({
                             options={[
                                 { value: 'bar', label: 'Столбчатый (Bar)' },
                                 { value: 'line', label: 'Линейный (Line)' },
+                                { value: 'pie', label: 'Круговая (Pie)' },
                             ]}
                         />
                     </PropertySection>

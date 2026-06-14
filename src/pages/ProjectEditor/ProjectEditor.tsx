@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { signalrService } from '@/services/signalrService';
 import { Canvas } from '@/components/Editor/Canvas/Canvas';
 import { EditorSidebar } from '@/components/Editor/Sidebar/EditorSidebar';
+import { EditorTopToolbar } from '@/components/Editor/Sidebar/EditorTopToolbar';
 import { EditorHeader } from '@/components/Editor/Header/EditorHeader';
 import { PropertiesPanel } from '@/components/Editor/PropertiesPanel/PropertiesPanel';
 import { InstrumentsLibrary } from '@/components/Editor/InstrumentsLibrary/InstrumentsLibrary';
@@ -139,6 +140,24 @@ const ProjectEditorPage = () => {
     };
 
     const projectName = currentProject?.name ?? 'Без названия';
+    const isTopNavigation = currentProject?.navigationType === 'topbar';
+
+    const toolbarProps = {
+        onToggleLibrary: () => {
+            setIsLibraryOpen(!isLibraryOpen);
+            setIsPagesOpen(false);
+        },
+        onTogglePages: () => {
+            setIsPagesOpen(!isPagesOpen);
+            setIsLibraryOpen(false);
+        },
+        onSave: handleManualSave,
+        onSaveAsTemplate: () => setIsTemplateModalOpen(true),
+        onPreview: handlePreview,
+        isLibraryOpen,
+        isPagesOpen,
+        saving,
+    };
 
     if (loading && !currentProject) {
         return <div className={styles.editorContainer}>Загрузка проекта...</div>;
@@ -159,24 +178,7 @@ const ProjectEditorPage = () => {
 
     return (
         <div className={styles.editorContainer}>
-            {!isPreview && (
-                <EditorSidebar
-                    onToggleLibrary={() => {
-                        setIsLibraryOpen(!isLibraryOpen);
-                        setIsPagesOpen(false);
-                    }}
-                    onTogglePages={() => {
-                        setIsPagesOpen(!isPagesOpen);
-                        setIsLibraryOpen(false);
-                    }}
-                    onSave={handleManualSave}
-                    onSaveAsTemplate={() => setIsTemplateModalOpen(true)}
-                    onPreview={handlePreview}
-                    isLibraryOpen={isLibraryOpen}
-                    isPagesOpen={isPagesOpen}
-                    saving={saving}
-                />
-            )}
+            {!isPreview && !isTopNavigation && <EditorSidebar {...toolbarProps} />}
 
             <div className={styles.editorMain}>
                 <EditorHeader
@@ -187,9 +189,11 @@ const ProjectEditorPage = () => {
                     canRedo={future.length > 0}
                     isPreview={isPreview}
                     onExitPreview={isPreview ? () => navigate(`/builder/${projectId}`) : undefined}
+                    showLogo={isTopNavigation}
                 />
 
                 <div className={styles.editorContentRow}>
+                    {!isPreview && isTopNavigation && <EditorTopToolbar {...toolbarProps} />}
                     <div className={styles.workspaceBody}>
                         {!isPreview && (
                             <>

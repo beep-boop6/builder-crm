@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { useDataStore } from '../../../store/dataStore';
 import { useEditorStore } from '../../../store/editorStore';
-import { applyTableMapping } from '@/utils/dataMapping';
+import { applyTableMapping, ensureTableRowIds } from '@/utils/dataMapping';
 import { validateTableMapping } from '@/utils/dataValidation';
 import { applyFiltersToRows, collectFiltersForTarget } from '@/utils/componentFilters';
+import { getTableRowId, TABLE_ROW_ID_KEY } from '@/utils/tableColumns';
 import type { TableColumnMapping } from '@/types/data';
 import type { DataRow } from '@/utils/dataValidation';
 import type { ComponentDataProps } from '@/types/data';
@@ -40,6 +41,8 @@ const V_ALIGN_FLEX: Record<string, React.CSSProperties['alignItems']> = {
 let uidCounter = 0;
 const uid = () => `t${Date.now()}-${++uidCounter}`;
 
+type ActiveCell = { rowId: string; colId: string; value: string };
+
 export const TableWidget: React.FC<TableWidgetProps> = ({
     componentId,
     props,
@@ -56,7 +59,11 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
     const isTableSelected = selectedComponentId === componentId;
 
     const [bandSelection, setBandSelection] = useState<BandSelection>(null);
+    const [activeCell, setActiveCell] = useState<ActiveCell | null>(null);
+    const activeCellRef = useRef<ActiveCell | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const skipSourceHydrationRef = useRef(false);
+    const placeholderRowIdRef = useRef(uid());
 
     const dataSourceId = props.dataSourceId;
     const isDataBound = Boolean(dataSourceId && dataSourceId !== 'none');
@@ -69,8 +76,15 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
     }, [dataSourceId, source, loadData]);
 
     useEffect(() => {
-        if (!isTableSelected) setBandSelection(null);
+        if (!isTableSelected) {
+            setBandSelection(null);
+            setActiveCell(null);
+        }
     }, [isTableSelected]);
+
+    useEffect(() => {
+        activeCellRef.current = activeCell;
+    }, [activeCell]);
 
     const activeFilters = useMemo(
         () => collectFiltersForTarget(canvasComponents, componentId),
@@ -87,91 +101,167 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
         ];
     }, [props.columns]);
 
-    // Колонки и строки для отображения (могут быть отфильтрованы)
+    const mappedFromSource = useMemo(() => {
+        if (!isDataBound || !source?.data?.length) {
+            return null;
+        }
+        const mappings = props.columnMappings as TableColumnMapping[] | undefined;
+        const validation = validateTableMapping(source.data, mappings ?? []);
+        if (!validation.valid) {
+            return { error: validation.error ?? 'Ошибка сопоставления колонок' };
+        }
+        return applyTableMapping(source.data, mappings);
+    }, [isDataBound, props.columnMappings, source?.data]);
+
+    // Импорт из источника → локальная копия для ручного редактирования (один раз)
+    useEffect(() => {
+        if (skipSourceHydrationRef.current) {
+            return;
+        }
+        if (!mappedFromSource || 'error' in mappedFromSource) {
+            return;
+        }
+
+        const latestProps = useEditorStore.getState().components
+            .find((component) => component.id === componentId)?.props;
+        if (latestProps?.customData !== undefined && latestProps?.customColumns !== undefined) {
+            skipSourceHydrationRef.current = true;
+            return;
+        }
+
+        skipSourceHydrationRef.current = true;
+        updateComponentProps(componentId, {
+            customColumns: mappedFromSource.columns,
+            customData: ensureTableRowIds(mappedFromSource.data as DataRow[]),
+        });
+    }, [mappedFromSource, componentId, updateComponentProps]);
+
+    useEffect(() => {
+        if (props.customData === undefined && props.customColumns === undefined) {
+            skipSourceHydrationRef.current = false;
+        }
+    }, [props.customColumns, props.customData]);
+
     const { columns, displayData, validationError } = useMemo(() => {
-        if (isDataBound) {
-            if (!source?.data || source.data.length === 0) {
-                return { columns: placeholderColumns, displayData: [] as DataRow[], validationError: null };
-            }
-            const mappings = props.columnMappings as TableColumnMapping[] | undefined;
-            const validation = validateTableMapping(source.data, mappings ?? []);
-            if (!validation.valid) {
-                return {
-                    columns: [{ id: 'error', title: 'Ошибка' }],
-                    displayData: [{ id: 'error-row', error: validation.error }] as DataRow[],
-                    validationError: validation.error ?? null,
-                };
-            }
-            const mapped = applyTableMapping(source.data, mappings);
+        if (mappedFromSource && 'error' in mappedFromSource) {
             return {
-                columns: mapped.columns as TableColumn[],
-                displayData: applyFiltersToRows(mapped.data as DataRow[], activeFilters),
-                validationError: null,
+                columns: [{ id: 'error', title: 'Ошибка' }],
+                displayData: [{ id: 'error-row', error: mappedFromSource.error }] as DataRow[],
+                validationError: mappedFromSource.error,
             };
         }
 
-        if (props.customData && props.customColumns) {
-            return {
-                columns: props.customColumns as TableColumn[],
-                displayData: applyFiltersToRows(props.customData as DataRow[], activeFilters),
-                validationError: null as string | null,
-            };
-        }
+        const resolvedColumns = (props.customColumns as TableColumn[] | undefined)
+            ?? (mappedFromSource?.columns as TableColumn[] | undefined)
+            ?? placeholderColumns;
+        const rawRows = (props.customData as DataRow[] | undefined)
+            ?? (mappedFromSource?.data as DataRow[] | undefined)
+            ?? [];
 
-        return { columns: placeholderColumns, displayData: [] as DataRow[], validationError: null };
+        return {
+            columns: resolvedColumns,
+            displayData: applyFiltersToRows(rawRows, activeFilters),
+            validationError: null as string | null,
+        };
     }, [
         activeFilters,
-        isDataBound,
+        mappedFromSource,
         placeholderColumns,
         props.customColumns,
         props.customData,
-        props.columnMappings,
-        source?.data,
     ]);
 
-    // Исходные (нефильтрованные) строки — только для мутаций
     const sourceRows = useCallback((): DataRow[] => {
-        if (props.customData) return props.customData as DataRow[];
+        if (props.customData) {
+            return props.customData as DataRow[];
+        }
+        if (mappedFromSource && !('error' in mappedFromSource)) {
+            return mappedFromSource.data as DataRow[];
+        }
         return [];
-    }, [props.customData]);
+    }, [props.customData, mappedFromSource]);
 
     const sourceColumns = useCallback((): TableColumn[] => {
-        if (props.customColumns) return props.customColumns as TableColumn[];
+        if (props.customColumns) {
+            return props.customColumns as TableColumn[];
+        }
+        if (mappedFromSource && !('error' in mappedFromSource)) {
+            return mappedFromSource.columns as TableColumn[];
+        }
         return columns;
-    }, [props.customColumns, columns]);
+    }, [props.customColumns, mappedFromSource, columns]);
 
     const persist = useCallback(
-        (nextCols: TableColumn[], nextRows: DataRow[]) => {
-            if (isDataBound) {
+        (
+            nextCols: TableColumn[],
+            nextRows: DataRow[],
+            options?: { skipHistory?: boolean; skipSync?: boolean }
+        ) => {
+            skipSourceHydrationRef.current = true;
+            updateComponentProps(
+                componentId,
+                { customColumns: nextCols, customData: ensureTableRowIds(nextRows) },
+                options
+            );
+        },
+        [componentId, updateComponentProps]
+    );
+
+    const commitCellValue = useCallback(
+        (rowId: string, colId: string, value: string) => {
+            const rows = sourceRows();
+            if (rows.length === 0) {
+                const newRow: DataRow = {
+                    [TABLE_ROW_ID_KEY]: rowId,
+                    ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])),
+                    [colId]: value,
+                };
+                persist(sourceColumns(), [newRow]);
                 return;
             }
-            updateComponentProps(componentId, { customColumns: nextCols, customData: nextRows });
+            const updated = rows.map((row) =>
+                getTableRowId(row) === rowId ? { ...row, [colId]: value } : row
+            );
+            persist(sourceColumns(), updated);
         },
-        [componentId, isDataBound, updateComponentProps]
+        [persist, sourceColumns, sourceRows]
     );
+
+    const handleCellFocus = (rowId: string, colId: string, currentValue: string) => {
+        setBandSelection(null);
+        setActiveCell({ rowId, colId, value: currentValue });
+    };
+
+    const handleCellChange = (rowId: string, colId: string, value: string) => {
+        setActiveCell({ rowId, colId, value });
+    };
+
+    const handleCellBlur = (rowId: string, colId: string) => {
+        const current = activeCellRef.current;
+        if (current?.rowId === rowId && current.colId === colId) {
+            commitCellValue(current.rowId, current.colId, current.value);
+        }
+        setActiveCell(null);
+    };
+
+    const getCellDisplayValue = (row: DataRow, colId: string): string => {
+        const rowId = getTableRowId(row);
+        if (activeCell?.rowId === rowId && activeCell.colId === colId) {
+            return activeCell.value;
+        }
+        return String(row[colId] ?? '');
+    };
 
     // Если ещё нет customData — возвращаем одну пустую строку для вставки
     const ensureRows = useCallback((): DataRow[] => {
         const rows = sourceRows();
         if (rows.length > 0) return rows;
-        return [{ id: uid(), ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])) }];
+        return [{ [TABLE_ROW_ID_KEY]: uid(), ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])) }];
     }, [sourceRows, sourceColumns]);
 
     const handleHeaderChange = (colId: string, newTitle: string) => {
         const updatedCols = sourceColumns().map((c) => c.id === colId ? { ...c, title: newTitle } : c);
         persist(updatedCols, sourceRows());
-    };
-
-    const handleCellChange = (rowId: string, colId: string, value: string) => {
-        const rows = sourceRows();
-        if (rows.length === 0) {
-            // Таблица пустая — создаём первую строку
-            const newRow: DataRow = { id: rowId, ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])), [colId]: value };
-            persist(sourceColumns(), [newRow]);
-            return;
-        }
-        const updated = rows.map((r) => r.id === rowId ? { ...r, [colId]: value } : r);
-        persist(sourceColumns(), updated);
     };
 
     const insertColumnAfter = (index: number) => {
@@ -183,7 +273,10 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
     };
 
     const insertRowAfter = (index: number) => {
-        const newRow: DataRow = { id: uid(), ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])) };
+        const newRow: DataRow = {
+            [TABLE_ROW_ID_KEY]: uid(),
+            ...Object.fromEntries(sourceColumns().map((c) => [c.id, ''])),
+        };
         const rows = [...ensureRows()];
         rows.splice(index + 1, 0, newRow);
         persist(sourceColumns(), rows);
@@ -204,7 +297,7 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
     const removeRow = useCallback((rowId: string) => {
         const rows = sourceRows();
         if (rows.length <= 1) return;
-        persist(sourceColumns(), rows.filter((r) => r.id !== rowId));
+        persist(sourceColumns(), rows.filter((row) => getTableRowId(row) !== rowId));
         setBandSelection(null);
     }, [sourceRows, sourceColumns, persist]);
 
@@ -246,12 +339,15 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
     // Строки для рендера: при пустых данных и фокусе — одна пустая строка с реальным id
     const renderRows: DataRow[] = useMemo(() => {
         if (displayData.length > 0) return displayData;
-        if (!isDataBound && isTableSelected) {
-            return [{ id: uid(), ...Object.fromEntries(columns.map((c) => [c.id, ''])) }];
+        if (isTableSelected) {
+            return [{
+                [TABLE_ROW_ID_KEY]: placeholderRowIdRef.current,
+                ...Object.fromEntries(columns.map((c) => [c.id, ''])),
+            }];
         }
         return [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [displayData, isDataBound, isTableSelected, columns.length]);
+    }, [displayData, isTableSelected, columns.length]);
 
     const gridTemplateColumns = `repeat(${columns.length}, minmax(0, 1fr))`;
 
@@ -291,14 +387,13 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
                                 className={styles.editInput}
                                 style={{ ...typographyStyle, ...inputAlignStyle }}
                                 value={col.title}
-                                readOnly={isDataBound}
                                 onChange={(e) => handleHeaderChange(col.id, e.target.value)}
                                 onFocus={() => setBandSelection(null)}
                                 onMouseDown={stopCanvasBubble}
                                 onClick={stopCanvasBubble}
                                 placeholder="Заголовок"
                             />
-                            {isTableSelected && !isDataBound && (
+                            {isTableSelected && (
                                 <>
                                     {/* Выбор колонки — верхняя полоска */}
                                     <button
@@ -338,54 +433,53 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
 
                 {/* Строки */}
                 <div className={styles.bodyRows}>
-                    {renderRows.map((row, rowIndex) => (
+                    {renderRows.map((row, rowIndex) => {
+                        const rowId = getTableRowId(row);
+                        return (
                         <div
-                            key={String(row.id)}
-                            className={`${styles.dataRow} ${isRowSel(String(row.id)) ? styles.rowBandSelected : ''}`}
+                            key={rowId}
+                            className={`${styles.dataRow} ${isRowSel(rowId) ? styles.rowBandSelected : ''}`}
                             style={{ gridTemplateColumns }}
                         >
                             {columns.map((col) => (
                                 <div
-                                    key={`${row.id}-${col.id}`}
+                                    key={`${rowId}-${col.id}`}
                                     className={`${styles.bodyCell} ${isColSel(col.id) ? styles.bandSelected : ''}`}
                                 >
                                     <div className={styles.cellInner} style={cellAlignStyle()}>
                                         <input
                                             className={styles.editInput}
                                             style={{ ...typographyStyle, ...inputAlignStyle }}
-                                            value={String(row[col.id] ?? '')}
-                                            readOnly={isDataBound}
-                                            onChange={(e) => handleCellChange(String(row.id), col.id, e.target.value)}
-                                            onFocus={() => setBandSelection(null)}
+                                            value={getCellDisplayValue(row, col.id)}
+                                            onChange={(e) => handleCellChange(rowId, col.id, e.target.value)}
+                                            onFocus={(e) => handleCellFocus(rowId, col.id, e.target.value)}
+                                            onBlur={() => handleCellBlur(rowId, col.id)}
                                             onMouseDown={stopCanvasBubble}
                                             onClick={stopCanvasBubble}
                                         />
                                     </div>
                                 </div>
                             ))}
-                            {isTableSelected && !isDataBound && (
+                            {isTableSelected && (
                                 <>
-                                    {/* Выбор строки — левая полоска */}
                                     <button
                                         type="button"
                                         className={styles.rowSelectStrip}
                                         tabIndex={-1}
                                         onMouseDown={stopCanvasBubble}
-                                        onClick={(e) => { e.stopPropagation(); setBandSelection({ type: 'row', rowId: String(row.id) }); }}
+                                        onClick={(e) => { e.stopPropagation(); setBandSelection({ type: 'row', rowId }); }}
                                     />
-                                    {/* × удалить строку — при выборе */}
-                                    {isRowSel(String(row.id)) && (
+                                    {isRowSel(rowId) && (
                                         <button
                                             type="button"
                                             className={styles.deleteHandleRow}
                                             title="Удалить строку"
                                             onMouseDown={stopCanvasBubble}
-                                            onClick={(e) => { e.stopPropagation(); removeRow(String(row.id)); }}
+                                            onClick={(e) => { e.stopPropagation(); removeRow(rowId); }}
                                         >
                                             <CloseOutlined />
                                         </button>
                                     )}
-                                    {/* + добавить строку снизу */}
                                     <button
                                         type="button"
                                         className={styles.insertHandleRow}
@@ -398,7 +492,8 @@ export const TableWidget: React.FC<TableWidgetProps> = ({
                                 </>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>

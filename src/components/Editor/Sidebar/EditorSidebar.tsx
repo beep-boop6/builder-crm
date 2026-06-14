@@ -1,34 +1,11 @@
-import addIcon from '@/assets/icons/add.svg';
-import pagesIcon from '@/assets/icons/pages.svg';
-import previewIcon from '@/assets/icons/preview.svg';
-import saveIcon from '@/assets/icons/save.svg';
-import templateIcon from '@/assets/icons/template.svg';
-import settingsIcon from '@/assets/icons/settings.svg';
 import logoIcon from '@/assets/icons/logo.svg';
 import { useNavigate } from 'react-router-dom';
+import { EditorToolbarButtons, type EditorToolbarButtonsProps } from './EditorToolbarButtons';
 import styles from './EditorSidebar.module.css';
 
-interface EditorSidebarProps {
-    onToggleLibrary: () => void;
-    onTogglePages: () => void;
-    onSave: () => void;
-    onSaveAsTemplate: () => void;
-    onPreview: () => void;
-    isLibraryOpen?: boolean;
-    isPagesOpen?: boolean;
-    saving?: boolean;
-}
+type EditorSidebarProps = Omit<EditorToolbarButtonsProps, 'variant'>;
 
-export const EditorSidebar = ({
-    onToggleLibrary,
-    onTogglePages,
-    onSave,
-    onSaveAsTemplate,
-    onPreview,
-    isLibraryOpen = false,
-    isPagesOpen = false,
-    saving = false,
-}: EditorSidebarProps) => {
+export const EditorSidebar = (props: EditorSidebarProps) => {
     const navigate = useNavigate();
 
     return (
@@ -37,62 +14,7 @@ export const EditorSidebar = ({
                 <img src={logoIcon} alt="Logo" className={styles.logoImage} />
             </div>
 
-            <div className={styles.toolbar}>
-                <button
-                    type="button"
-                    className={`${styles.menuButton} ${isLibraryOpen ? styles.menuButtonActive : ''}`}
-                    onClick={onToggleLibrary}
-                    title="Библиотека компонентов"
-                >
-                    <img src={addIcon} alt="" className={styles.iconImage} />
-                </button>
-
-                <button
-                    type="button"
-                    className={`${styles.menuButton} ${isPagesOpen ? styles.menuButtonActive : ''}`}
-                    onClick={onTogglePages}
-                    title="Страницы"
-                >
-                    <img src={pagesIcon} alt="" className={styles.iconImageSmall} />
-                </button>
-
-                <button
-                    type="button"
-                    className={styles.menuButton}
-                    onClick={onPreview}
-                    title="Предпросмотр"
-                >
-                    <img src={previewIcon} alt="" className={styles.iconImageSmall} />
-                </button>
-
-                <button
-                    type="button"
-                    className={styles.menuButton}
-                    onClick={onSave}
-                    disabled={saving}
-                    title={saving ? 'Сохранение...' : 'Сохранить'}
-                >
-                    <img src={saveIcon} alt="" className={styles.iconImageSmall} />
-                </button>
-
-                <button
-                    type="button"
-                    className={styles.menuButton}
-                    onClick={onSaveAsTemplate}
-                    title="Сохранить как шаблон"
-                >
-                    <img src={templateIcon} alt="" className={styles.iconImageSmall} />
-                </button>
-
-                <button
-                    type="button"
-                    className={styles.menuButton}
-                    onClick={() => navigate('/settings')}
-                    title="Настройки"
-                >
-                    <img src={settingsIcon} alt="" className={styles.iconImage} />
-                </button>
-            </div>
+            <EditorToolbarButtons variant="sidebar" {...props} />
         </div>
     );
 };

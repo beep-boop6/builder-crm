@@ -12,11 +12,12 @@ import {
     PointElement,
     LineElement,
     BarElement,
+    ArcElement,
     Title,
     Tooltip,
     Legend,
 } from 'chart.js';
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar, Line, Pie } from 'react-chartjs-2';
 import { chartBackgroundPlugin } from './chartBackgroundPlugin';
 import styles from './ChartWidget.module.css';
 
@@ -26,6 +27,7 @@ ChartJS.register(
     PointElement,
     LineElement,
     BarElement,
+    ArcElement,
     Title,
     Tooltip,
     Legend,
@@ -58,6 +60,22 @@ const normalizeHex = (value: string | undefined, fallback: string): string => {
         return `#${trimmed}`;
     }
     return fallback;
+};
+
+const PIE_SLICE_PALETTE = [
+    '#155DA4',
+    '#1976d2',
+    '#42a5f5',
+    '#64b5f6',
+    '#5c6bc0',
+    '#7e57c2',
+    '#ab47bc',
+    '#26a69a',
+];
+
+const getPieSliceColors = (baseColor: string, count: number): string[] => {
+    const palette = [baseColor, ...PIE_SLICE_PALETTE.filter((color) => color !== baseColor)];
+    return Array.from({ length: count }, (_, index) => palette[index % palette.length]);
 };
 
 export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fillColor }) => {
@@ -128,23 +146,32 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
         '#FFFFFF'
     );
 
-    const chartData = useMemo(() => ({
-        labels: chartState.labels,
-        datasets: [
-            {
-                label: chartMapping.yField || 'Значение',
-                data: chartState.values,
-                backgroundColor: chartType === 'bar' ? seriesColor : 'transparent',
-                borderColor: seriesColor,
-                borderWidth: chartType === 'line' ? 3 : 1,
-                borderRadius: chartType === 'bar' ? 4 : 0,
-                pointBackgroundColor: seriesColor,
-                pointBorderColor: seriesColor,
-                pointRadius: 4,
-                tension: 0.3,
-            },
-        ],
-    }), [chartState.labels, chartState.values, chartMapping.yField, chartType, seriesColor]);
+    const chartData = useMemo(() => {
+        const sliceCount = chartState.values.length;
+        const pieColors = getPieSliceColors(seriesColor, sliceCount);
+
+        return {
+            labels: chartState.labels,
+            datasets: [
+                {
+                    label: chartMapping.yField || 'Значение',
+                    data: chartState.values,
+                    backgroundColor: chartType === 'pie'
+                        ? pieColors
+                        : chartType === 'bar'
+                            ? seriesColor
+                            : 'transparent',
+                    borderColor: chartType === 'pie' ? '#FFFFFF' : seriesColor,
+                    borderWidth: chartType === 'pie' ? 2 : chartType === 'line' ? 3 : 1,
+                    borderRadius: chartType === 'bar' ? 4 : 0,
+                    pointBackgroundColor: seriesColor,
+                    pointBorderColor: seriesColor,
+                    pointRadius: 4,
+                    tension: 0.3,
+                },
+            ],
+        };
+    }, [chartState.labels, chartState.values, chartMapping.yField, chartType, seriesColor]);
 
     const chartOptions = useMemo(() => ({
         responsive: true,
@@ -152,22 +179,26 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
         plugins: {
             legend: {
                 display: true,
-                position: 'top' as const,
+                position: chartType === 'pie' ? ('right' as const) : ('top' as const),
             },
             customCanvasBackgroundColor: {
                 color: backgroundColor,
             },
         },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: { color: '#e8e8e8' },
-            },
-            x: {
-                grid: { display: false },
-            },
-        },
-    }), [backgroundColor]);
+        ...(chartType === 'pie'
+            ? {}
+            : {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#e8e8e8' },
+                    },
+                    x: {
+                        grid: { display: false },
+                    },
+                },
+            }),
+    }), [backgroundColor, chartType]);
 
     return (
         <div
@@ -189,6 +220,8 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             <div className={styles.chartInner} style={{ backgroundColor }}>
                 {chartType === 'line' ? (
                     <Line key={`${backgroundColor}-${seriesColor}-${chartType}`} data={chartData} options={chartOptions} />
+                ) : chartType === 'pie' ? (
+                    <Pie key={`${backgroundColor}-${seriesColor}-${chartType}`} data={chartData} options={chartOptions} />
                 ) : (
                     <Bar key={`${backgroundColor}-${seriesColor}-${chartType}`} data={chartData} options={chartOptions} />
                 )}

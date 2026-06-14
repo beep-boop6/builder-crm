@@ -4,10 +4,8 @@ import type { FormFieldDefinition, FormMode } from '@/types/form';
 import { getComponentMinSize } from '@/utils/componentMinSize';
 
 export const TZ_DEFAULT_FORM_FIELDS: FormFieldDefinition[] = [
-    { name: 'text', label: 'Текст', type: 'text', placeholder: 'Введите текст' },
-    { name: 'number', label: 'Число', type: 'number', placeholder: '0' },
-    { name: 'date', label: 'Дата', type: 'date' },
-    { name: 'select', label: 'Список', type: 'select', options: ['Вариант 1', 'Вариант 2', 'Вариант 3'] },
+    { name: 'header', label: 'Заголовок', type: 'text', required: true, placeholder: 'Заголовок' },
+    { name: 'value1', label: 'Значение', type: 'text', placeholder: '' },
 ];
 
 /** Скругление контейнера поиска (как у Ant Design Input large). */
@@ -81,7 +79,6 @@ export const getWidestFormFieldWidth = (fields: FormFieldDefinition[]): number =
 export const calculateFormContentHeight = (params: {
     formMode: FormMode;
     fields: FormFieldDefinition[];
-    layout: string;
     width: number;
 }): number => {
     if (params.formMode === 'search') {
@@ -90,13 +87,6 @@ export const calculateFormContentHeight = (params: {
 
     const contentFields = params.fields.filter((field) => field.type !== 'submit');
     const fieldCount = Math.max(contentFields.length, 1);
-
-    if (params.layout === 'horizontal') {
-        const columnWidth = 160;
-        const columns = Math.max(1, Math.floor((params.width - 24) / columnWidth));
-        const rows = Math.ceil(fieldCount / columns);
-        return PADDING_Y + rows * FIELD_ROW_HEIGHT + FIELD_GAP + SUBMIT_ROW_HEIGHT;
-    }
 
     return (
         PADDING_Y
@@ -128,12 +118,10 @@ export const resolveFormHeight = (
         return resolveSearchFormMetrics(component.width).height;
     }
 
-    const layout = String(props.layout ?? 'vertical');
     const fields = getFormFieldsFromProps(props);
     const contentHeight = calculateFormContentHeight({
         formMode,
         fields,
-        layout,
         width: component.width,
     });
     const { minHeight } = getComponentMinSize(

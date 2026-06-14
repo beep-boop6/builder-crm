@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import undoArrowIcon from '@/assets/icons/undo_arrow.svg';
+import logoIcon from '@/assets/icons/logo.svg';
 import { BreadcrumbSeparator } from '@/components/Common/BreadcrumbSeparator';
 import themeIcon from '@/assets/icons/theme-light.svg';
 import { useUIStore } from '@/store/uiStore';
@@ -14,6 +15,7 @@ interface EditorHeaderProps {
     canRedo: boolean;
     isPreview?: boolean;
     onExitPreview?: () => void;
+    showLogo?: boolean;
 }
 
 export const EditorHeader = ({
@@ -24,6 +26,7 @@ export const EditorHeader = ({
     canRedo,
     isPreview = false,
     onExitPreview,
+    showLogo = false,
 }: EditorHeaderProps) => {
     const navigate = useNavigate();
     const toggleTheme = useUIStore((state) => state.toggleTheme);
@@ -38,6 +41,16 @@ export const EditorHeader = ({
     return (
         <header className={styles.header}>
             <nav className={styles.breadcrumbs} aria-label="Навигация">
+                {showLogo && (
+                    <button
+                        type="button"
+                        className={styles.logoButton}
+                        onClick={() => navigate('/create-app')}
+                        title="К приложениям"
+                    >
+                        <img src={logoIcon} alt="" className={styles.logoImage} />
+                    </button>
+                )}
                 {breadcrumbs.map((item, index) => (
                     <Fragment key={`${item.label}-${index}`}>
                         {index > 0 && <BreadcrumbSeparator />}

@@ -5,6 +5,8 @@ import type { DataRow } from '@/utils/dataValidation';
 
 export type TableColumnOption = { id: string; title: string };
 
+export { getTableRowId, TABLE_ROW_ID_KEY } from '@/utils/dataMapping';
+
 export const getLinkedTableComponent = (
     canvasComponents: EditorComponent[],
     targetIds: string[]
@@ -31,6 +33,10 @@ export const resolveTableColumns = (
     const dataSourceId = props.dataSourceId as string | undefined;
     const isDataBound = Boolean(dataSourceId && dataSourceId !== 'none');
 
+    if (props.customColumns) {
+        return props.customColumns as TableColumnOption[];
+    }
+
     if (isDataBound) {
         const mappings = props.columnMappings as TableColumnMapping[] | undefined;
         if (mappings?.length) {
@@ -43,10 +49,6 @@ export const resolveTableColumns = (
             return applyTableMapping(sourceRows, mappings).columns;
         }
         return [];
-    }
-
-    if (props.customColumns) {
-        return props.customColumns as TableColumnOption[];
     }
 
     const raw = props.columns as string[] | undefined;
@@ -73,16 +75,16 @@ export const resolveTableRows = (
     const dataSourceId = props.dataSourceId as string | undefined;
     const isDataBound = Boolean(dataSourceId && dataSourceId !== 'none');
 
+    if (props.customData) {
+        return props.customData as DataRow[];
+    }
+
     if (isDataBound) {
         if (!sourceRows?.length) {
             return [];
         }
         const mappings = props.columnMappings as TableColumnMapping[] | undefined;
         return applyTableMapping(sourceRows, mappings).data as DataRow[];
-    }
-
-    if (props.customData) {
-        return props.customData as DataRow[];
     }
 
     return [];

@@ -35,6 +35,14 @@
     flex: 1;
 }
 
+.toolbarHorizontal {
+    margin-top: 0;
+    flex-direction: row;
+    flex: none;
+    width: auto;
+    gap: 12px;
+}
+
 .menuButton {
     width: 30px;
     height: 30px;

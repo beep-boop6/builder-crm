@@ -3,6 +3,11 @@ import { createPortal } from 'react-dom';
 import { Input, Popconfirm, Select } from 'antd';
 import type { InputRef } from 'antd/es/input';
 import searchIcon from '@/assets/icons/search.svg';
+import buttonIcon from '@/assets/icons/Button.svg';
+import cardIcon from '@/assets/icons/card.svg';
+import filterIcon from '@/assets/icons/filter.svg';
+import graphIcon from '@/assets/icons/graph.svg';
+import tableIcon from '@/assets/icons/Table.svg';
 import { useEditorStore, type EditorComponent } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
@@ -18,7 +23,27 @@ import {
 } from '@/utils/componentDefaults';
 import { ComponentLibraryPreview } from './ComponentLibraryPreview';
 import { computeLibraryPreviewPosition } from './libraryPreviewPosition';
+import { isCardComponentType } from '@/utils/componentFilters';
 import styles from './InstrumentsLibrary.module.css';
+
+const LIBRARY_ICON_SIZE = 48;
+
+const COMPONENT_TYPE_ICONS: Record<string, string> = {
+    button: buttonIcon,
+    table: tableIcon,
+    chart: graphIcon,
+    filter: filterIcon,
+};
+
+const getComponentLibraryIconSrc = (type: string): string | null => {
+    if (COMPONENT_TYPE_ICONS[type]) {
+        return COMPONENT_TYPE_ICONS[type];
+    }
+    if (isCardComponentType(type)) {
+        return cardIcon;
+    }
+    return null;
+};
 
 type HoverPreviewState = {
     component: EditorComponent;
@@ -156,20 +181,32 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
     };
 
     const renderIcon = (type: string) => {
-        if (type === 'button') return <div className={styles.mockButton}>Btn</div>;
-        if (type === 'table') return (
-            <div className={styles.mockTable}>
-                {[...Array(9)].map((_, i) => <div key={i} className={styles.mockTableCell} />)}
-            </div>
+        const src = getComponentLibraryIconSrc(type);
+        if (src) {
+            return (
+                <img
+                    src={src}
+                    alt=""
+                    className={styles.componentIcon}
+                    width={LIBRARY_ICON_SIZE}
+                    height={LIBRARY_ICON_SIZE}
+                    draggable={false}
+                />
+            );
+        }
+        if (type === 'form') {
+            return <span className={styles.fallbackIcon} aria-hidden>📝</span>;
+        }
+        return (
+            <img
+                src={cardIcon}
+                alt=""
+                className={styles.componentIcon}
+                width={LIBRARY_ICON_SIZE}
+                height={LIBRARY_ICON_SIZE}
+                draggable={false}
+            />
         );
-        if (type === 'chart') return <div className={styles.mockChart}>📊</div>;
-        if (type === 'form') return <div className={styles.mockForm}>📝</div>;
-        if (type === 'filter') return <div className={styles.mockFilter}>🔍</div>;
-        if (type === 'card' || type === 'card-client') return <div className={styles.mockCard}>👤</div>;
-        if (type === 'card-deal') return <div className={styles.mockCard}>💼</div>;
-        if (type === 'card-summary') return <div className={styles.mockCard}>📊</div>;
-        if (type === 'card-kpi') return <div className={styles.mockCard}>📈</div>;
-        return <div className={styles.mockCard}>◻</div>;
     };
 
     const cardComponents = filteredComponents.filter((component) => component.category === 'cards');

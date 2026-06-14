@@ -9,6 +9,7 @@ import {
     isFormSearchMode,
 } from '@/utils/formLayout';
 import type { FormMode } from '@/types/form';
+import { getFilterMinSize } from '@/utils/filterLayout';
 
 export interface ComponentMinSize {
     minWidth: number;
@@ -113,7 +114,6 @@ const getChartMinSize = (definition?: ComponentDefinition): ComponentMinSize => 
 const getFormMinSize = (component: EditorComponent, definition?: ComponentDefinition): ComponentMinSize => {
     const props = component.props ?? {};
     const formMode = (props.formMode as FormMode) || 'default';
-    const layout = String(props.layout ?? 'vertical');
     const fields = getFormFieldsFromProps(props);
     if (isFormSearchMode(props)) {
         const search = getFormSearchResizeConstraints(component.width);
@@ -126,7 +126,6 @@ const getFormMinSize = (component: EditorComponent, definition?: ComponentDefini
     const minHeight = calculateFormContentHeight({
         formMode,
         fields,
-        layout,
         width: component.width,
     });
 
@@ -177,7 +176,7 @@ export const getComponentMinSize = (
             size = getFormMinSize(component, definition);
             break;
         case 'filter':
-            size = { minWidth: 200, minHeight: 64 };
+            size = getFilterMinSize(component);
             break;
         case 'card-deal':
             size = { minWidth: 240, minHeight: 120 };

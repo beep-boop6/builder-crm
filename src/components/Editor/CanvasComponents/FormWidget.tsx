@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useLayoutEffect, type CSSProperties } from 'react';
-import { Button, DatePicker, Input, InputNumber, Select, message } from 'antd';
+import { useCallback, useEffect, useLayoutEffect, useMemo, type CSSProperties } from 'react';
+import { Button, DatePicker, Input, InputNumber, message } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import type { EditorComponent } from '@/store/editorStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
-import type { FormFieldDefinition, FormMode } from '@/types/form';
+import { useDataStore } from '@/store/dataStore';
+import type { FormFieldDefinition, FormLayout, FormMode } from '@/types/form';
 import {
     getFormFieldsFromProps,
     resolveSearchFormMetrics,
     syncFormComponentHeight,
 } from '@/utils/formLayout';
+import type { DataRow } from '@/utils/dataValidation';
+import { applyFormSubmissionToTable } from '@/utils/formTableMutation';
 import { FormFieldBlock } from './FormFieldBlock';
 import styles from './FormWidget.module.css';
 
@@ -22,18 +25,26 @@ const stopCanvasBubble = (event: React.SyntheticEvent) => {
     event.stopPropagation();
 };
 
+const normalizeFormLayout = (raw: string | undefined): FormLayout => {
+    if (raw === 'row') {
+        return 'row';
+    }
+    return 'column';
+};
+
 export const FormWidget = ({ component }: FormWidgetProps) => {
     const updateComponentProps = useEditorStore((state) => state.updateComponentProps);
     const updateComponent = useEditorStore((state) => state.updateComponent);
+    const canvasComponents = useEditorStore((state) => state.components);
     const selectedComponentId = useEditorStore((state) => state.selectedComponentId);
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
+    const { sources, loadData } = useDataStore();
 
     const props = component.props ?? {};
     const formMode = (props.formMode as FormMode) || 'default';
-    const layout = (props.layout as string) || 'vertical';
+    const layout = normalizeFormLayout(props.layout as string | undefined);
     const fields = getFormFieldsFromProps(props);
-    const submitLabel = String(props.submitLabel ?? 'Отправить');
-    const searchFieldKey = String(props.searchFieldKey ?? fields[0]?.name ?? 'text');
+    const submitLabel = String(props.submitLabel ?? (layout === 'row' ? 'Добавить строку' : 'Добавить колонку'));
     const searchValue = String(props.searchValue ?? '');
     const formValues = (props.formValues as Record<string, string> | undefined) ?? {};
     const targetIds = (props.targetComponentIds as string[] | undefined) ?? [];
@@ -43,6 +54,40 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
 
     const componentFontFamily = (props.fontFamily as string) || 'Raleway, sans-serif';
     const componentFontSize = component.fontSize ?? 14;
+
+    const sourceRowsByTableId = useMemo(() => {
+        const map: Record<string, DataRow[] | undefined> = {};
+        canvasComponents.forEach((item) => {
+            if (item.type !== 'table') {
+                return;
+            }
+            const dataSourceId = item.props?.dataSourceId as string | undefined;
+            if (!dataSourceId || dataSourceId === 'none') {
+                return;
+            }
+            const source = sources.find((entry) => entry.id === dataSourceId);
+            if (source?.data) {
+                map[item.id] = source.data;
+            }
+        });
+        return map;
+    }, [canvasComponents, sources]);
+
+    useEffect(() => {
+        canvasComponents.forEach((item) => {
+            if (item.type !== 'table') {
+                return;
+            }
+            const dataSourceId = item.props?.dataSourceId as string | undefined;
+            if (!dataSourceId || dataSourceId === 'none') {
+                return;
+            }
+            const source = sources.find((entry) => entry.id === dataSourceId);
+            if (source && !source.data && !source.isLoading && !source.error) {
+                loadData(dataSourceId);
+            }
+        });
+    }, [canvasComponents, sources, loadData]);
 
     const flexJustifyFromTextAlign = (): CSSProperties['justifyContent'] => {
         if (textAlign === 'center') return 'center';
@@ -97,7 +142,6 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
         component.height,
         fields,
         formMode,
-        layout,
         getComponentDefinition,
         updateComponent,
     ]);
@@ -111,21 +155,27 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
         });
     };
 
-    const notifyIfUnlinked = () => {
-        if (targetIds.length === 0) {
-            message.warning('Привяжите форму к таблице или графику в панели свойств → «Привязка к данным»');
-        }
-    };
-
     const applyToLinkedComponents = () => {
-        notifyIfUnlinked();
-        patch({
-            appliedFormValues: { ...formValues },
-            lastAppliedAt: Date.now(),
-        });
-        if (targetIds.length > 0) {
-            message.success('Данные переданы в связанные компоненты');
+        const result = applyFormSubmissionToTable(
+            canvasComponents,
+            targetIds,
+            layout,
+            fields,
+            formValues,
+            sourceRowsByTableId
+        );
+
+        if ('error' in result) {
+            message.warning(result.error);
+            return;
         }
+
+        updateComponentProps(result.tableId, result.patch);
+        const clearedValues = Object.fromEntries(
+            fields.filter((field) => field.type !== 'submit').map((field) => [field.name, ''])
+        );
+        patch({ formValues: clearedValues });
+        message.success(layout === 'row' ? 'Строка добавлена в таблицу' : 'Колонка добавлена в таблицу');
     };
 
     const parseDateValue = (raw: string | undefined): Dayjs | null => {
@@ -147,7 +197,7 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
             : { width: '100%', maxWidth: '100%' };
 
     if (formMode === 'search') {
-        const searchField = fields.find((field) => field.name === searchFieldKey) ?? fields[0];
+        const searchField = fields[0];
         const metrics = resolveSearchFormMetrics(component.width);
 
         return (
@@ -171,27 +221,20 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
                             const value = event.target.value;
                             patch({
                                 searchValue: value,
-                                ...(value === '' ? { appliedSearchValue: '' } : {}),
+                                appliedSearchValue: value,
                             });
                         }}
                         onSearch={(value) => {
-                            notifyIfUnlinked();
                             patch({
                                 searchValue: value,
                                 appliedSearchValue: value,
-                                lastAppliedAt: Date.now(),
                             });
-                            if (targetIds.length > 0 && value.trim()) {
-                                message.success('Фильтр применён к связанным компонентам');
-                            }
                         }}
                     />
                 </div>
             </div>
         );
     }
-
-    const isHorizontalLayout = layout === 'horizontal';
 
     const renderFieldControl = (field: FormFieldDefinition) => {
         const inputStyle = getFieldInputStyle(field);
@@ -248,16 +291,12 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
         }
         if (field.type === 'select') {
             return (
-                <Select
+                <Input
                     size="small"
-                    className={styles.fullWidth}
                     style={inputStyle}
-                    value={formValues[field.name] || undefined}
-                    onChange={(value) => setFieldValue(field.name, value)}
-                    options={(field.options ?? []).map((option) => ({
-                        value: option,
-                        label: option,
-                    }))}
+                    placeholder={field.placeholder}
+                    value={formValues[field.name] ?? ''}
+                    onChange={(event) => setFieldValue(field.name, event.target.value)}
                     onMouseDown={stopCanvasBubble}
                     onClick={stopCanvasBubble}
                 />
@@ -268,11 +307,10 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
 
     return (
         <div
-            className={`${styles.formWidget} ${styles.formWidgetDefault} ${isHorizontalLayout ? styles.horizontal : ''}`}
+            className={`${styles.formWidget} ${styles.formWidgetDefault}`}
             style={{
                 backgroundColor: component.backgroundColor || '#fff',
-                alignItems: isHorizontalLayout ? undefined : flexAlignFromTextAlign(),
-                justifyContent: isHorizontalLayout ? flexJustifyFromTextAlign() : undefined,
+                alignItems: flexAlignFromTextAlign(),
             }}
         >
             {fields

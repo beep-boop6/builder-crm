@@ -46,9 +46,19 @@ export const TablePropertiesView = ({
                     source={source}
                     mappings={(component.props?.columnMappings as TableColumnMapping[] | undefined) ?? []}
                     onChange={(columnMappings) =>
-                        onUpdateProps({ ...component.props, columnMappings })
+                        onUpdateProps({
+                            columnMappings,
+                            customData: undefined,
+                            customColumns: undefined,
+                        })
                     }
-                    onReload={() => loadData(dataSourceId)}
+                    onReload={() => {
+                        onUpdateProps({
+                            customData: undefined,
+                            customColumns: undefined,
+                        });
+                        loadData(dataSourceId);
+                    }}
                 />
             )}
         </>

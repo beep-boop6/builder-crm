@@ -1,7 +1,8 @@
 import type { EditorComponent } from '@/store/editorStore';
+import { TABLE_ROW_ID_KEY } from '@/utils/dataMapping';
 import type { DataRow } from '@/utils/dataValidation';
 
-export type FilterType = 'status' | 'date' | 'field';
+export type FilterType = 'status' | 'date' | 'field' | 'global';
 
 export interface ActiveFilter {
     filterType: FilterType;
@@ -43,6 +44,21 @@ const rowMatchesFilter = (row: DataRow, filter: ActiveFilter): boolean => {
     return cell.includes(value);
 };
 
+const rowMatchesGlobalSearch = (row: DataRow, query: string): boolean => {
+    const needle = query.toLowerCase().trim();
+    if (!needle) {
+        return true;
+    }
+
+    return Object.entries(row).some(([key, raw]) => {
+        if (key === TABLE_ROW_ID_KEY) {
+            return false;
+        }
+        const cell = raw === null || raw === undefined ? '' : String(raw).toLowerCase();
+        return cell.includes(needle);
+    });
+};
+
 export const collectFiltersForTarget = (
     canvasComponents: EditorComponent[],
     targetComponentId: string
@@ -78,36 +94,17 @@ export const collectFiltersForTarget = (
             }
 
             if (props.formMode === 'search') {
-                const appliedSearch = String(props.appliedSearchValue ?? '').trim();
-                const fieldKey = String(
-                    props.searchFieldKey ?? (props.fields as { name?: string }[] | undefined)?.[0]?.name ?? ''
-                );
-                if (!appliedSearch || !fieldKey) {
+                const appliedSearch = String(props.appliedSearchValue ?? props.searchValue ?? '').trim();
+                if (!appliedSearch) {
                     return;
                 }
                 filters.push({
-                    filterType: 'field',
-                    fieldKey,
+                    filterType: 'global',
+                    fieldKey: '',
                     value: appliedSearch,
                 });
-                return;
             }
-
-            const formValues = props.appliedFormValues as Record<string, string> | undefined;
-            if (!formValues) {
-                return;
-            }
-            Object.entries(formValues).forEach(([fieldKey, rawValue]) => {
-                const value = String(rawValue ?? '').trim();
-                if (!value) {
-                    return;
-                }
-                filters.push({
-                    filterType: 'field',
-                    fieldKey,
-                    value,
-                });
-            });
+            return;
         }
     });
 
@@ -119,12 +116,27 @@ export const applyFiltersToRows = (rows: DataRow[], filters: ActiveFilter[]): Da
         return rows;
     }
 
-    const applicable = filters.filter((filter) => isFilterApplicable(rows, filter.fieldKey));
-    if (applicable.length === 0) {
+    const globalFilters = filters.filter(
+        (filter) => filter.filterType === 'global' && filter.value.trim()
+    );
+    const columnFilters = filters.filter((filter) => filter.filterType !== 'global');
+    const applicableColumnFilters = columnFilters.filter((filter) =>
+        isFilterApplicable(rows, filter.fieldKey)
+    );
+
+    if (globalFilters.length === 0 && applicableColumnFilters.length === 0) {
         return rows;
     }
 
-    return rows.filter((row) => applicable.every((filter) => rowMatchesFilter(row, filter)));
+    return rows.filter((row) => {
+        const passesGlobal =
+            globalFilters.length === 0
+            || globalFilters.every((filter) => rowMatchesGlobalSearch(row, filter.value));
+        const passesColumn =
+            applicableColumnFilters.length === 0
+            || applicableColumnFilters.every((filter) => rowMatchesFilter(row, filter));
+        return passesGlobal && passesColumn;
+    });
 };
 
 export const isCardComponentType = (type: string): boolean =>

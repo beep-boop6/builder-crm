@@ -84,19 +84,12 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
         defaultProps: {
             formMode: 'default',
             fields: [
-                { name: 'text', label: 'Текст', type: 'text', placeholder: 'Введите текст' },
-                { name: 'number', label: 'Число', type: 'number', placeholder: '0' },
-                { name: 'date', label: 'Дата', type: 'date' },
-                {
-                    name: 'select',
-                    label: 'Список',
-                    type: 'select',
-                    options: ['Вариант 1', 'Вариант 2', 'Вариант 3'],
-                },
+                { name: 'header', label: 'Заголовок', type: 'text', required: true, placeholder: 'Заголовок' },
+                { name: 'value1', label: 'Значение', type: 'text', placeholder: '' },
             ],
-            layout: 'vertical',
+            layout: 'column',
             textAlign: 'left',
-            submitLabel: 'Отправить',
+            submitLabel: 'Добавить колонку',
             formValues: {},
             appliedFormValues: {},
             targetComponentIds: [],

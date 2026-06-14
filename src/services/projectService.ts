@@ -6,6 +6,7 @@ import { elementService } from './elementService';
 import { pageService } from './pageService';
 import { signalrService } from './signalrService';
 import { syncProjectPages } from './projectSyncService';
+import { cloneTemplatePagesForProject } from '@/utils/templateClone';
 import {
     fromBackendNavigation,
     toBackendNavigation,
@@ -190,8 +191,10 @@ export const projectService = {
         templatePages: Page[],
         defaultPageId: string
     ): Promise<Project> => {
+        const pages = cloneTemplatePagesForProject(templatePages, defaultPageId);
+
         if (isMockEnabled) {
-            return mockApi.updateProject(projectId, { pages: templatePages });
+            return mockApi.updateProject(projectId, { pages });
         }
 
         // SignalR нужен до открытия редактора — компоненты шаблона пишутся через хаб.
@@ -201,12 +204,6 @@ export const projectService = {
                 `Не удалось подключиться к SignalR (${backendBaseUrl}/crmConstructorHub). Проверьте, что бэкенд запущен.`
             );
         }
-
-        const pages = templatePages.map((page, index) => ({
-            ...page,
-            id: index === 0 ? defaultPageId : page.id,
-            components: page.components.map((component) => ({ ...component })),
-        }));
 
         const updated = await projectService.update(projectId, { pages });
 

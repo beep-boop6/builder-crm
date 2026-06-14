@@ -114,7 +114,11 @@ interface EditorState {
      * overrides — актуальная геометрия с холста (не из API); без них берётся snapshot из store.
      */
     persistComponentPosition: (id: string, overrides?: Partial<EditorComponent>) => void;
-    updateComponentProps: (id: string, props: Record<string, any>) => void;
+    updateComponentProps: (
+        id: string,
+        props: Record<string, any>,
+        options?: { skipHistory?: boolean; skipSync?: boolean }
+    ) => void;
     deleteComponent: (id: string) => void;
     bringToFront: (id: string) => void;
     sendToBack: (id: string) => void;
@@ -297,8 +301,10 @@ export const useEditorStore = create<EditorState>()(
                 }
             },
 
-             updateComponentProps: (id, props) => {
-                 get().saveHistory();
+             updateComponentProps: (id, props, options) => {
+                 if (!options?.skipHistory) {
+                     get().saveHistory();
+                 }
                  let updatedComponentData: EditorComponent | null = null;
 
                  set((state) => {
@@ -316,7 +322,7 @@ export const useEditorStore = create<EditorState>()(
                      };
                  });
 
-                 if (updatedComponentData) {
+                 if (updatedComponentData && !options?.skipSync) {
                      emitComponentChange(updatedComponentData, get);
                  }
              },

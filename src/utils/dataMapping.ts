@@ -1,6 +1,23 @@
 import type { ChartFieldMapping, TableColumnMapping } from '@/types/data';
 import type { DataRow } from '@/utils/dataValidation';
 
+/** Стабильный идентификатор строки таблицы (не совпадает с колонкой данных `id`). */
+export const TABLE_ROW_ID_KEY = '__rowId';
+
+export const getTableRowId = (row: DataRow): string =>
+    String(row[TABLE_ROW_ID_KEY] ?? row.id ?? '');
+
+export const ensureTableRowIds = (rows: DataRow[]): DataRow[] =>
+    rows.map((row, index) => {
+        if (row[TABLE_ROW_ID_KEY]) {
+            return row;
+        }
+        return {
+            ...row,
+            [TABLE_ROW_ID_KEY]: String(row.id ?? `row-${index}`),
+        };
+    });
+
 export const getAvailableFields = (rows: DataRow[]): string[] => {
     if (rows.length === 0) {
         return [];
@@ -30,7 +47,7 @@ export const applyTableMapping = (
         const columns = fields.map((field) => ({ id: field, title: field }));
         const data = rows.map((row, index) => ({
             ...row,
-            id: String(row.id ?? `row-${index}`),
+            [TABLE_ROW_ID_KEY]: String(row.id ?? `row-${index}`),
         }));
         return { columns, data };
     }
@@ -41,7 +58,9 @@ export const applyTableMapping = (
     }));
 
     const data = rows.map((row, index) => {
-        const mapped: Record<string, unknown> = { id: String(row.id ?? `row-${index}`) };
+        const mapped: Record<string, unknown> = {
+            [TABLE_ROW_ID_KEY]: String(row.id ?? `row-${index}`),
+        };
         mappings.forEach((mapping) => {
             mapped[mapping.sourceField] = row[mapping.sourceField] ?? '';
         });

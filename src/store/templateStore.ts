@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Page } from '@/types';
 import type { ProjectTemplate } from '@/types/template';
 import { generateGuid } from '@/utils';
+import { normalizeTemplateComponents } from '@/utils/templateLayout';
 import { SYSTEM_TEMPLATES } from '@/data/systemTemplates';
 
 interface TemplateState {
@@ -24,7 +25,15 @@ const withTimestamps = (
     template: Omit<ProjectTemplate, 'createdAt' | 'updatedAt'>,
 ): ProjectTemplate => {
     const now = Date.now();
-    return { ...template, createdAt: now, updatedAt: now };
+    return {
+        ...template,
+        pages: template.pages.map((page) => ({
+            ...page,
+            components: normalizeTemplateComponents(page.components),
+        })),
+        createdAt: now,
+        updatedAt: now,
+    };
 };
 
 export const useTemplateStore = create<TemplateState>()(
@@ -77,7 +86,7 @@ export const useTemplateStore = create<TemplateState>()(
         }),
         {
             name: 'builder_crm_project_templates',
-            version: 2,
+            version: 4,
             migrate: (persistedState, version) => {
                 const state = persistedState as TemplateState | undefined;
                 if (version < 2 || !state) {
@@ -86,15 +95,26 @@ export const useTemplateStore = create<TemplateState>()(
                         selectedType: state?.selectedType ?? 'all',
                     };
                 }
-                const systemIds = new Set(SYSTEM_TEMPLATES.map((t) => t.id));
-                const userTemplates = state.templates.filter((t) => !systemIds.has(t.id));
-                return {
-                    ...state,
-                    templates: [
-                        ...SYSTEM_TEMPLATES.map(withTimestamps),
-                        ...userTemplates,
-                    ],
-                };
+                if (version < 4) {
+                    const systemIds = new Set(SYSTEM_TEMPLATES.map((t) => t.id));
+                    const userTemplates = (state.templates ?? [])
+                        .filter((t) => !systemIds.has(t.id))
+                        .map((template) => ({
+                            ...template,
+                            pages: template.pages.map((page) => ({
+                                ...page,
+                                components: normalizeTemplateComponents(page.components),
+                            })),
+                        }));
+                    return {
+                        ...state,
+                        templates: [
+                            ...SYSTEM_TEMPLATES.map(withTimestamps),
+                            ...userTemplates,
+                        ],
+                    };
+                }
+                return state;
             },
         },
     ),

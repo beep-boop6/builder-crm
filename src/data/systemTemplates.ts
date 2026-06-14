@@ -32,7 +32,7 @@ const tableProps = (
 
 const chartProps = (
     dataSourceId: string,
-    chartType: 'bar' | 'line',
+    chartType: 'bar' | 'line' | 'pie',
     xField: string,
     yField: string
 ) => ({
@@ -88,6 +88,12 @@ const comp = (
     ...overrides,
 });
 
+const TOP_ROW_Y = 20;
+const CONTENT_START_Y = 139;
+const MAIN_TABLE_HEIGHT = 400;
+const CHART_BLOCK_Y = CONTENT_START_Y + MAIN_TABLE_HEIGHT + 16;
+const SIDE_COLUMN_X = 860;
+
 // ——— Воронка продаж ———
 const SALES_PAGE_ID = 'a1000001-0001-4000-8000-000000000001';
 const SALES = {
@@ -102,25 +108,25 @@ const SALES = {
 };
 
 const salesFunnelComponents: EditorComponent[] = [
-    comp(SALES.btnCreate, 'button', 24, 20, 180, 40, 'Создать сделку', {
+    comp(SALES.btnCreate, 'button', 24, TOP_ROW_Y, 180, 40, 'Создать сделку', {
         text: 'Создать сделку',
         variant: 'primary',
         targetPageId: '',
     }, primaryButton),
-    comp(SALES.filterStatus, 'filter', 220, 20, 340, 72, 'Статус сделки', filterProps(
+    comp(SALES.filterStatus, 'filter', 220, TOP_ROW_Y, 360, 103, 'Статус сделки', filterProps(
         'Статус сделки',
         'status',
         'status',
         [SALES.tableDeals, SALES.chartStatus]
     )),
-    comp(SALES.tableDeals, 'table', 24, 108, 820, 400, 'Таблица сделок', tableProps('src-deals', [
+    comp(SALES.tableDeals, 'table', 24, CONTENT_START_Y, 820, MAIN_TABLE_HEIGHT, 'Таблица сделок', tableProps('src-deals', [
         { sourceField: 'title', title: 'Название сделки' },
         { sourceField: 'client', title: 'Клиент' },
         { sourceField: 'amount', title: 'Сумма' },
         { sourceField: 'status', title: 'Статус' },
         { sourceField: 'date', title: 'Дата' },
     ]), { zIndex: 2 }),
-    comp(SALES.cardDeal, 'card-deal', 860, 108, 300, 168, 'Сделка', {
+    comp(SALES.cardDeal, 'card-deal', SIDE_COLUMN_X, CONTENT_START_Y, 300, 168, 'Сделка', {
         dealTitle: 'Поставка оборудования',
         clientName: 'ООО Альфа',
         dealStatus: 'Переговоры',
@@ -128,7 +134,7 @@ const salesFunnelComponents: EditorComponent[] = [
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(SALES.cardClient, 'card', 860, 288, 300, 320, 'Иван Иванов', {
+    comp(SALES.cardClient, 'card', SIDE_COLUMN_X, CONTENT_START_Y + 168 + 12, 300, 320, 'Иван Иванов', {
         fullName: 'Иван Иванов',
         organization: 'ООО Альфа',
         email: 'ivan@alfa.example.com',
@@ -143,22 +149,22 @@ const salesFunnelComponents: EditorComponent[] = [
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(SALES.btnEdit, 'button', 860, 620, 140, 36, 'Редактировать', {
-        text: 'Редактировать',
-        variant: 'default',
-        targetPageId: '',
-    }, { backgroundColor: '#f5f5f5', color: '#333333' }),
-    comp(SALES.btnDelete, 'button', 1020, 620, 140, 36, 'Удалить', {
-        text: 'Удалить',
-        variant: 'default',
-        targetPageId: '',
-    }, { backgroundColor: '#fff1f0', color: '#cf1322' }),
-    comp(SALES.chartStatus, 'chart', 24, 524, 820, 260, 'Распределение по статусам', chartProps(
+    comp(SALES.chartStatus, 'chart', 24, CHART_BLOCK_Y, 820, 260, 'Распределение по статусам', chartProps(
         'src-deals',
         'bar',
         'status',
         'amount'
     ), { zIndex: 2 }),
+    comp(SALES.btnEdit, 'button', SIDE_COLUMN_X, CHART_BLOCK_Y + 260 + 16, 140, 36, 'Редактировать', {
+        text: 'Редактировать',
+        variant: 'default',
+        targetPageId: '',
+    }, { backgroundColor: '#f5f5f5', color: '#333333' }),
+    comp(SALES.btnDelete, 'button', 1020, CHART_BLOCK_Y + 260 + 16, 140, 36, 'Удалить', {
+        text: 'Удалить',
+        variant: 'default',
+        targetPageId: '',
+    }, { backgroundColor: '#fff1f0', color: '#cf1322' }),
 ];
 
 // ——— База клиентов ———
@@ -177,12 +183,12 @@ const CLIENTS = {
 };
 
 const clientsBaseComponents: EditorComponent[] = [
-    comp(CLIENTS.btnAdd, 'button', 24, 20, 200, 40, 'Добавить клиента', {
+    comp(CLIENTS.btnAdd, 'button', 24, TOP_ROW_Y, 200, 40, 'Добавить клиента', {
         text: 'Добавить клиента',
         variant: 'primary',
         targetPageId: '',
     }, primaryButton),
-    comp(CLIENTS.search, 'form', 240, 20, 420, 56, 'Поиск', {
+    comp(CLIENTS.search, 'form', 240, TOP_ROW_Y, 420, 56, 'Поиск', {
         formMode: 'search',
         fields: [{ name: 'name', label: 'Поиск клиентов', type: 'text', placeholder: 'Имя, телефон или email' }],
         layout: 'horizontal',
@@ -198,19 +204,19 @@ const clientsBaseComponents: EditorComponent[] = [
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }, { height: 56 }),
-    comp(CLIENTS.filterStatus, 'filter', 680, 20, 300, 72, 'Статус клиента', filterProps(
+    comp(CLIENTS.filterStatus, 'filter', 680, TOP_ROW_Y, 320, 103, 'Статус клиента', filterProps(
         'Статус клиента',
         'status',
         'status',
         [CLIENTS.table]
     )),
-    comp(CLIENTS.table, 'table', 24, 108, 820, 400, 'Таблица клиентов', tableProps('src-clients', [
+    comp(CLIENTS.table, 'table', 24, CONTENT_START_Y, 820, MAIN_TABLE_HEIGHT, 'Таблица клиентов', tableProps('src-clients', [
         { sourceField: 'name', title: 'Имя' },
         { sourceField: 'phone', title: 'Телефон' },
         { sourceField: 'email', title: 'Электронная почта' },
         { sourceField: 'status', title: 'Статус клиента' },
     ]), { zIndex: 2 }),
-    comp(CLIENTS.card, 'card', 860, 108, 300, 360, 'Иван Иванов', {
+    comp(CLIENTS.card, 'card', SIDE_COLUMN_X, CONTENT_START_Y, 300, 360, 'Иван Иванов', {
         fullName: 'Иван Иванов',
         organization: 'ООО «Пример»',
         email: 'ivan@example.com',
@@ -225,29 +231,29 @@ const clientsBaseComponents: EditorComponent[] = [
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(CLIENTS.btnEdit, 'button', 860, 480, 140, 36, 'Редактировать', {
+    comp(CLIENTS.btnEdit, 'button', SIDE_COLUMN_X, CONTENT_START_Y + 360 + 12, 140, 36, 'Редактировать', {
         text: 'Редактировать',
         variant: 'default',
         targetPageId: '',
     }, { backgroundColor: '#f5f5f5', color: '#333333' }),
-    comp(CLIENTS.btnDelete, 'button', 1020, 480, 140, 36, 'Удалить', {
+    comp(CLIENTS.btnDelete, 'button', 1020, CONTENT_START_Y + 360 + 12, 140, 36, 'Удалить', {
         text: 'Удалить',
         variant: 'default',
         targetPageId: '',
     }, { backgroundColor: '#fff1f0', color: '#cf1322' }),
-    comp(CLIENTS.kpiTotal, 'card-kpi', 24, 524, 280, 120, 'Всего клиентов', {
+    comp(CLIENTS.kpiTotal, 'card-kpi', 24, CHART_BLOCK_Y, 280, 120, 'Всего клиентов', {
         kpiLabel: 'Всего клиентов',
         kpiValue: '248',
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(CLIENTS.kpiActive, 'card-kpi', 320, 524, 280, 120, 'Активные', {
+    comp(CLIENTS.kpiActive, 'card-kpi', 320, CHART_BLOCK_Y, 280, 120, 'Активные', {
         kpiLabel: 'Активные клиенты',
         kpiValue: '186',
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(CLIENTS.kpiNew, 'card-kpi', 616, 524, 280, 120, 'Новые за месяц', {
+    comp(CLIENTS.kpiNew, 'card-kpi', 616, CHART_BLOCK_Y, 280, 120, 'Новые за месяц', {
         kpiLabel: 'Новые за месяц',
         kpiValue: '34',
         borderWidth: 1,
@@ -270,52 +276,59 @@ const FINANCE = {
 
 const financeTargets = [FINANCE.chartIncome, FINANCE.tableTx];
 
+const FINANCE_TOP_ROW_HEIGHT = 133;
+const FINANCE_CONTENT_START_Y = TOP_ROW_Y + FINANCE_TOP_ROW_HEIGHT + 16;
+const FINANCE_CHART_HEIGHT = 280;
+const FINANCE_TABLE_Y = FINANCE_CONTENT_START_Y + FINANCE_CHART_HEIGHT + 16;
+const FINANCE_TABLE_HEIGHT = 220;
+const FINANCE_KPI_Y = FINANCE_TABLE_Y + FINANCE_TABLE_HEIGHT + 16;
+
 const financeComponents: EditorComponent[] = [
-    comp(FINANCE.filterPeriod, 'filter', 24, 20, 460, 72, 'Период', filterProps(
+    comp(FINANCE.filterPeriod, 'filter', 24, TOP_ROW_Y, 480, FINANCE_TOP_ROW_HEIGHT, 'Период', filterProps(
         'Период (дата от / до)',
         'date',
         'date',
         financeTargets,
         { value: '2026-01-01', valueTo: '2026-12-31' }
     )),
-    comp(FINANCE.filterType, 'filter', 500, 20, 280, 72, 'Тип операции', filterProps(
+    comp(FINANCE.filterType, 'filter', 520, TOP_ROW_Y, 300, 103, 'Тип операции', filterProps(
         'Доходы / расходы',
         'type',
         'field',
         financeTargets
     )),
-    comp(FINANCE.chartIncome, 'chart', 24, 108, 820, 280, 'График доходов', chartProps(
+    comp(FINANCE.chartIncome, 'chart', 24, FINANCE_CONTENT_START_Y, 820, FINANCE_CHART_HEIGHT, 'График доходов', chartProps(
         'src-sales',
         'line',
         'month',
         'amount'
     ), { zIndex: 2 }),
-    comp(FINANCE.tableTx, 'table', 24, 404, 820, 220, 'Транзакции', tableProps('src-transactions', [
+    comp(FINANCE.tableTx, 'table', 24, FINANCE_TABLE_Y, 820, FINANCE_TABLE_HEIGHT, 'Транзакции', tableProps('src-transactions', [
         { sourceField: 'date', title: 'Дата' },
         { sourceField: 'type', title: 'Тип операции' },
         { sourceField: 'amount', title: 'Сумма' },
         { sourceField: 'category', title: 'Категория' },
     ]), { zIndex: 2 }),
-    comp(FINANCE.cardSummary, 'card-summary', 860, 108, 300, 200, 'Итоги', {
+    comp(FINANCE.cardSummary, 'card-summary', SIDE_COLUMN_X, FINANCE_CONTENT_START_Y, 300, 200, 'Итоги', {
         totalIncome: '1 250 000 ₽',
         totalExpense: '820 000 ₽',
         profit: '430 000 ₽',
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(FINANCE.kpiBest, 'card-kpi', 24, 640, 280, 120, 'Лучший месяц', {
+    comp(FINANCE.kpiBest, 'card-kpi', 24, FINANCE_KPI_Y, 280, 120, 'Лучший месяц', {
         kpiLabel: 'Лучший месяц',
         kpiValue: 'Март — 240 000 ₽',
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(FINANCE.kpiWorst, 'card-kpi', 320, 640, 280, 120, 'Худший месяц', {
+    comp(FINANCE.kpiWorst, 'card-kpi', 320, FINANCE_KPI_Y, 280, 120, 'Худший месяц', {
         kpiLabel: 'Худший месяц',
         kpiValue: 'Апрель — 45 000 ₽',
         borderWidth: 1,
         borderColor: '#E8E8E8',
     }),
-    comp(FINANCE.kpiAvg, 'card-kpi', 616, 640, 280, 120, 'Средний доход', {
+    comp(FINANCE.kpiAvg, 'card-kpi', 616, FINANCE_KPI_Y, 280, 120, 'Средний доход', {
         kpiLabel: 'Средний доход',
         kpiValue: '153 000 ₽ / мес',
         borderWidth: 1,

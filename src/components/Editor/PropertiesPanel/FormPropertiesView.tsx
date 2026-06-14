@@ -1,7 +1,7 @@
 import type { EditorComponent } from '@/store/editorStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
-import type { FormFieldDefinition, FormMode } from '@/types/form';
+import type { FormFieldDefinition, FormLayout, FormMode } from '@/types/form';
 import {
     clampSearchFormDimensions,
     getFormFieldsFromProps,
@@ -29,14 +29,17 @@ const FIELD_TYPE_OPTIONS = [
     { value: 'text', label: 'Текст' },
     { value: 'number', label: 'Число' },
     { value: 'date', label: 'Дата' },
-    { value: 'select', label: 'Список' },
 ];
+
+const normalizeFormLayout = (raw: string | undefined): FormLayout =>
+    raw === 'row' ? 'row' : 'column';
 
 export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
     const updateComponent = useEditorStore((state) => state.updateComponent);
     const getComponentDefinition = useComponentStore((state) => state.getComponentDefinition);
 
     const props = component.props ?? {};
+    const layout = normalizeFormLayout(props.layout as string | undefined);
     const fields = getFormFieldsFromProps(props);
     const editingFieldName = props.editingFieldName as string | undefined;
     const editingFieldIndex = editingFieldName
@@ -58,15 +61,15 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
         applyPatch({ fields: next });
     };
 
-    const addField = (type: FormFieldDefinition['type']) => {
-        const index = fields.length + 1;
+    const addValueField = () => {
+        const index = fields.filter((field) => field.type !== 'submit').length;
         applyPatch({
             fields: [
                 ...fields,
                 {
-                    name: `field${index}`,
-                    label: `Поле ${index}`,
-                    type,
+                    name: `value${index}`,
+                    label: 'Значение',
+                    type: 'text',
                     placeholder: '',
                 },
             ],
@@ -74,10 +77,13 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
     };
 
     const removeField = (index: number) => {
+        if (index === 0) {
+            return;
+        }
         applyPatch({ fields: fields.filter((_, fieldIndex) => fieldIndex !== index) });
     };
 
-    const resetToTzFields = () => {
+    const resetToDefaultFields = () => {
         applyPatch({ fields: structuredClone(TZ_DEFAULT_FORM_FIELDS) });
     };
 
@@ -116,33 +122,28 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
             {props.formMode === 'search' ? (
                 <>
                     <PropertySection title="Строка поиска">
-                        <PropertySelect
-                            value={String(props.searchFieldKey ?? fields[0]?.name ?? 'text')}
-                            onChange={(event) => applyPatch({ searchFieldKey: event.target.value })}
-                            options={fields.map((field) => ({
-                                value: field.name,
-                                label: field.label,
-                            }))}
-                        />
                         <PropertyTextInput
-                            value={String(
-                                fields.find((f) => f.name === (props.searchFieldKey ?? fields[0]?.name))?.placeholder
-                                    ?? 'Поиск...'
-                            )}
+                            value={String(fields[0]?.placeholder ?? 'Поиск...')}
                             placeholder="Подсказка в поле"
                             onChange={(event) => {
-                                const key = String(props.searchFieldKey ?? fields[0]?.name ?? 'text');
-                                const next = fields.map((field) =>
-                                    field.name === key
-                                        ? { ...field, placeholder: event.target.value }
-                                        : field
-                                );
+                                const next = fields.length > 0
+                                    ? fields.map((field, index) =>
+                                        index === 0
+                                            ? { ...field, placeholder: event.target.value }
+                                            : field
+                                    )
+                                    : [{
+                                        name: 'search',
+                                        label: 'Поиск',
+                                        type: 'text' as const,
+                                        placeholder: event.target.value,
+                                    }];
                                 applyPatch({ fields: next });
                             }}
                         />
                         <p className={styles.hintText}>
-                            Ключ поля (name) должен совпадать с колонкой таблицы/графика (например title, client, name).
-                            Фильтр срабатывает по Enter или кнопке лупы. Ширина — синей ручкой на холсте.
+                            Поиск срабатывает при вводе: строка таблицы показывается, если хотя бы в одной
+                            ячейке есть введённый текст. Очистите поле, чтобы сбросить фильтр.
                         </p>
                     </PropertySection>
                 </>
@@ -150,22 +151,34 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
                 <>
                     <PropertySection title="Раскладка">
                         <PropertySelect
-                            value={(props.layout as string) || 'vertical'}
-                            onChange={(event) => applyPatch({ layout: event.target.value })}
+                            value={layout}
+                            onChange={(event) => {
+                                const nextLayout = normalizeFormLayout(event.target.value);
+                                applyPatch({
+                                    layout: nextLayout,
+                                    submitLabel:
+                                        nextLayout === 'row' ? 'Добавить строку' : 'Добавить колонку',
+                                });
+                            }}
                             options={[
-                                { value: 'vertical', label: 'Вертикальная' },
-                                { value: 'horizontal', label: 'Горизонтальная' },
+                                { value: 'column', label: 'Столбец' },
+                                { value: 'row', label: 'Строка' },
                             ]}
                         />
+                        <p className={styles.hintText}>
+                            {layout === 'column'
+                                ? 'Отправка добавляет колонку после последней. Первое поле — заголовок (обязательное). Каждое следующее поле — значение только для соответствующей строки; без поля или без ввода ячейка остаётся пустой.'
+                                : 'Отправка добавляет строку после последней. Первое поле — значение первой колонки, каждое следующее — для следующей колонки. Незаполненные ячейки остаются пустыми.'}
+                        </p>
                     </PropertySection>
                     <PropertySection
                         title="Поля формы"
                         action={
-                            <PropertyButton onClick={() => addField('text')}>+ Поле</PropertyButton>
+                            <PropertyButton onClick={addValueField}>+ Поле</PropertyButton>
                         }
                     >
-                        <PropertyButton variant="ghost" onClick={resetToTzFields}>
-                            Стандартный набор (ТЗ)
+                        <PropertyButton variant="ghost" onClick={resetToDefaultFields}>
+                            Стандартный набор
                         </PropertyButton>
                         {fields.map((field, index) => (
                             <div key={`${field.name}-${index}`} style={{ marginBottom: 12 }}>
@@ -174,29 +187,37 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
                                     placeholder="Подпись"
                                     onChange={(event) => updateField(index, { label: event.target.value })}
                                 />
-                                <PropertyTextInput
-                                    value={field.name}
-                                    placeholder="Ключ поля (для данных)"
-                                    onChange={(event) => updateField(index, { name: event.target.value })}
-                                />
-                                <PropertySelect
-                                    value={field.type}
-                                    onChange={(event) =>
-                                        updateField(index, {
-                                            type: event.target.value as FormFieldDefinition['type'],
-                                        })
-                                    }
-                                    options={FIELD_TYPE_OPTIONS}
-                                />
-                                <PropertyButton variant="danger" onClick={() => removeField(index)}>
-                                    Удалить поле
-                                </PropertyButton>
+                                {index === 0 ? (
+                                    <p className={styles.hintText}>Обязательное поле заголовка</p>
+                                ) : (
+                                    <>
+                                        <PropertyTextInput
+                                            value={field.name}
+                                            placeholder="Ключ поля"
+                                            onChange={(event) => updateField(index, { name: event.target.value })}
+                                        />
+                                        <PropertySelect
+                                            value={field.type === 'select' ? 'text' : field.type}
+                                            onChange={(event) =>
+                                                updateField(index, {
+                                                    type: event.target.value as FormFieldDefinition['type'],
+                                                })
+                                            }
+                                            options={FIELD_TYPE_OPTIONS}
+                                        />
+                                        <PropertyButton variant="danger" onClick={() => removeField(index)}>
+                                            Удалить поле
+                                        </PropertyButton>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </PropertySection>
                     <PropertySection title="Кнопка отправки">
                         <PropertyTextInput
-                            value={String(props.submitLabel ?? 'Отправить')}
+                            value={String(
+                                props.submitLabel ?? (layout === 'row' ? 'Добавить строку' : 'Добавить колонку')
+                            )}
                             onChange={(event) => applyPatch({ submitLabel: event.target.value })}
                         />
                     </PropertySection>
@@ -241,8 +262,8 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
 
             <p className={styles.hintText}>
                 {props.formMode === 'search'
-                    ? 'В «Привязка к данным» отметьте таблицу/график. Поиск фильтрует строки по подстроке в выбранной колонке.'
-                    : 'Ключи полей (name) должны совпадать с колонками источника. «Отправить» применяет фильтр к привязанным таблице и графику.'}
+                    ? 'В «Привязка к данным» отметьте таблицу или график. Поиск фильтрует строки по всем колонкам.'
+                    : 'В «Привязка к данным» отметьте таблицу. Кнопка отправки добавит столбец или строку.'}
             </p>
 
             <ComponentTargetsSection
