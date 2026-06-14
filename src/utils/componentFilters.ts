@@ -2,7 +2,7 @@ import type { EditorComponent } from '@/store/editorStore';
 import { TABLE_ROW_ID_KEY } from '@/utils/dataMapping';
 import type { DataRow } from '@/utils/dataValidation';
 
-export type FilterType = 'status' | 'date' | 'field' | 'global';
+export type FilterType = 'status' | 'date' | 'field' | 'global' | 'number';
 
 export interface ActiveFilter {
     filterType: FilterType;
@@ -41,6 +41,10 @@ const rowMatchesFilter = (row: DataRow, filter: ActiveFilter): boolean => {
         return cell === value || cell.includes(value);
     }
 
+    if (filter.filterType === 'number') {
+        return cell.includes(value);
+    }
+
     return cell.includes(value);
 };
 
@@ -71,6 +75,9 @@ export const collectFiltersForTarget = (
         if (component.type === 'filter') {
             const targets = getTargetIds(props);
             if (!targets.includes(targetComponentId)) {
+                return;
+            }
+            if (props.valueInvalid === true) {
                 return;
             }
             const value = String(props.value ?? '').trim();

@@ -1,32 +1,33 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { EditorComponent } from '@/store/editorStore';
+import { useEditorStore } from '@/store/editorStore';
 import { useDataStore } from '@/store/dataStore';
 import { useComponentStore } from '@/store/componentStore';
 import { getComponentMinSize } from '@/utils/componentMinSize';
-import { ChartMappingSection } from './DataMappingSection';
+import { resolveTableColumns, resolveTableRows } from '@/utils/tableColumns';
+import { ChartTableMappingSection } from './DataMappingSection';
 import {
     LayoutSections,
     PropertyColorInput,
     PropertySection,
     PropertySelect,
 } from './PropertyFields';
+import styles from './PropertiesPanel.module.css';
 
 interface ChartPropertiesViewProps {
     component: EditorComponent;
     onUpdate: (key: keyof EditorComponent, value: string | number) => void;
     onUpdateProps: (props: Record<string, unknown>) => void;
-    onDataSourceChange: (dataSourceId: string) => void;
 }
 
 export const ChartPropertiesView = ({
     component,
     onUpdate,
     onUpdateProps,
-    onDataSourceChange,
 }: ChartPropertiesViewProps) => {
+    const canvasComponents = useEditorStore((state) => state.components);
     const { sources, loadData } = useDataStore();
-    const dataSourceId = component.props?.dataSourceId as string | undefined;
-    const source = sources.find((item) => item.id === dataSourceId);
+    const tableComponentId = component.props?.tableComponentId as string | undefined;
     const chartMapping = (component.props?.chartMapping as { xField: string; yField: string } | undefined) ?? {
         xField: (component.props?.xAxisKey as string) ?? '',
         yField: (component.props?.yAxisKey as string) ?? '',
@@ -42,28 +43,82 @@ export const ChartPropertiesView = ({
     const componentDefinition = useComponentStore.getState().getComponentDefinition(component.type);
     const { minWidth, minHeight } = getComponentMinSize(component, componentDefinition);
 
-    useEffect(() => {
-        if (dataSourceId && dataSourceId !== 'none' && source && !source.data && !source.isLoading && !source.error) {
-            loadData(dataSourceId);
-        }
-    }, [dataSourceId, source, loadData]);
+    const tableOptions = useMemo(
+        () =>
+            canvasComponents
+                .filter((item) => item.type === 'table')
+                .map((item) => ({
+                    value: item.id,
+                    label: item.text?.trim() || 'Таблица',
+                })),
+        [canvasComponents]
+    );
 
-    const dataSourceOptions = [
-        { value: 'none', label: '— Выберите источник —' },
-        ...sources.map((src) => ({ value: src.id, label: src.name })),
-    ];
+    const linkedTable = useMemo(
+        () => canvasComponents.find((item) => item.id === tableComponentId && item.type === 'table'),
+        [canvasComponents, tableComponentId]
+    );
+
+    const linkedTableDataSourceId = linkedTable?.props?.dataSourceId as string | undefined;
+    const source = sources.find((item) => item.id === linkedTableDataSourceId);
+
+    useEffect(() => {
+        if (
+            linkedTableDataSourceId
+            && linkedTableDataSourceId !== 'none'
+            && source
+            && !source.data
+            && !source.isLoading
+            && !source.error
+        ) {
+            loadData(linkedTableDataSourceId);
+        }
+    }, [linkedTableDataSourceId, source, loadData]);
+
+    const columnOptions = useMemo(
+        () => resolveTableColumns(linkedTable, source?.data),
+        [linkedTable, source?.data]
+    );
+
+    const previewRows = useMemo(
+        () => resolveTableRows(linkedTable, source?.data),
+        [linkedTable, source?.data]
+    );
+
+    const handleTableChange = (nextTableId: string) => {
+        const table = canvasComponents.find((item) => item.id === nextTableId && item.type === 'table');
+        const tableSourceId = table?.props?.dataSourceId as string | undefined;
+        const tableSource = tableSourceId ? sources.find((item) => item.id === tableSourceId) : undefined;
+        const columns = resolveTableColumns(table, tableSource?.data);
+        const xField = columns[0]?.id ?? '';
+        const yField = columns[1]?.id ?? columns[0]?.id ?? '';
+
+        onUpdateProps({
+            tableComponentId: nextTableId || undefined,
+            dataSourceId: undefined,
+            chartMapping: { xField, yField },
+            xAxisKey: xField,
+            yAxisKey: yField,
+        });
+    };
 
     return (
         <>
-            <PropertySection title="Источник данных">
+            <PropertySection title="Таблица">
                 <PropertySelect
-                    value={dataSourceId || 'none'}
-                    onChange={(event) => onDataSourceChange(event.target.value)}
-                    options={dataSourceOptions}
+                    value={tableComponentId || ''}
+                    onChange={(event) => handleTableChange(event.target.value)}
+                    options={[
+                        { value: '', label: '— выберите таблицу —' },
+                        ...tableOptions,
+                    ]}
                 />
+                {tableOptions.length === 0 ? (
+                    <p className={styles.hintTextWarning}>Добавьте на страницу таблицу</p>
+                ) : null}
             </PropertySection>
 
-            {dataSourceId && dataSourceId !== 'none' && (
+            {linkedTable ? (
                 <>
                     <PropertySection title="Тип графика">
                         <PropertySelect
@@ -77,8 +132,9 @@ export const ChartPropertiesView = ({
                         />
                     </PropertySection>
 
-                    <ChartMappingSection
-                        source={source}
+                    <ChartTableMappingSection
+                        columns={columnOptions}
+                        rows={previewRows}
                         xField={chartMapping.xField}
                         yField={chartMapping.yField}
                         onChange={(mapping) => onUpdateProps({
@@ -86,10 +142,9 @@ export const ChartPropertiesView = ({
                             xAxisKey: mapping.xField,
                             yAxisKey: mapping.yField,
                         })}
-                        onReload={() => loadData(dataSourceId)}
                     />
                 </>
-            )}
+            ) : null}
 
             <PropertySection title="Цвет графика">
                 <PropertyColorInput

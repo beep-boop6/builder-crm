@@ -19,6 +19,8 @@ export interface DataSourceConfig {
 
 export interface ComponentDataProps {
     dataSourceId?: string;
+    /** Таблица на холсте, из которой строится график */
+    tableComponentId?: string;
     columnMappings?: TableColumnMapping[];
     chartMapping?: ChartFieldMapping;
     customData?: Record<string, unknown>[];

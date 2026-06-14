@@ -2,6 +2,7 @@ import type { TableColumnMapping } from '@/types/data';
 import type { DataSource } from '@/store/dataStore';
 import { buildDefaultTableMappings } from '@/utils/dataMapping';
 import { validateChartMapping, validateTableMapping } from '@/utils/dataValidation';
+import type { DataRow } from '@/utils/dataValidation';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
     PropertyAlert,
@@ -110,6 +111,60 @@ export const TableMappingSection = ({
                     Подставить все поля источника
                 </PropertyButton>
             </div>
+        </PropertySection>
+    );
+};
+
+interface ChartTableMappingSectionProps {
+    columns: Array<{ id: string; title: string }>;
+    rows: DataRow[];
+    xField: string;
+    yField: string;
+    onChange: (mapping: { xField: string; yField: string }) => void;
+}
+
+export const ChartTableMappingSection = ({
+    columns,
+    rows,
+    xField,
+    yField,
+    onChange,
+}: ChartTableMappingSectionProps) => {
+    const validation = rows.length > 0
+        ? validateChartMapping(rows, { xField, yField })
+        : { valid: true as const };
+
+    const columnOptions = [
+        { value: '', label: '— выберите колонку —' },
+        ...columns.map((column) => ({ value: column.id, label: column.title })),
+    ];
+
+    return (
+        <PropertySection title="Данные графика">
+            {columns.length === 0 && (
+                <PropertyAlert type="info" message="У таблицы пока нет колонок" />
+            )}
+            {!validation.valid && validation.error && (
+                <PropertyAlert type="warning" message={validation.error} />
+            )}
+
+            <span className={styles.subsectionTitle}>Ось X</span>
+            <PropertySelect
+                value={xField}
+                onChange={(event) => onChange({ xField: event.target.value, yField })}
+                options={columnOptions}
+            />
+
+            <span className={styles.subsectionTitle}>Ось Y</span>
+            <PropertySelect
+                value={yField}
+                onChange={(event) => onChange({ xField, yField: event.target.value })}
+                options={columnOptions}
+            />
+
+            <p className={styles.hintText}>
+                График строится по строкам привязанной таблицы с учётом активных фильтров на холсте.
+            </p>
         </PropertySection>
     );
 };

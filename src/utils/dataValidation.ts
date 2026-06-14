@@ -52,11 +52,14 @@ export const validateTableMapping = (
     rows: DataRow[],
     mappings: TableColumnMapping[]
 ): { valid: boolean; error?: string } => {
-    if (mappings.length === 0) {
+    if (mappings.length === 0 || rows.length === 0) {
         return { valid: true };
     }
 
     const sample = rows[0];
+    if (!sample || typeof sample !== 'object') {
+        return { valid: true };
+    }
     const missing = mappings
         .map((mapping) => mapping.sourceField)
         .filter((field) => field && !(field in sample));
@@ -79,7 +82,14 @@ export const validateChartMapping = (
         return { valid: false, error: 'Укажите поля для осей X и Y' };
     }
 
+    if (rows.length === 0) {
+        return { valid: true };
+    }
+
     const sample = rows[0];
+    if (!sample || typeof sample !== 'object') {
+        return { valid: false, error: 'Нет данных для построения графика' };
+    }
     const missing: string[] = [];
 
     if (!(mapping.xField in sample)) {

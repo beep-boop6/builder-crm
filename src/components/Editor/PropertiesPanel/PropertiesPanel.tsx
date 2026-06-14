@@ -249,7 +249,6 @@ export const PropertiesPanel = () => {
                     component={selectedComponent}
                     onUpdate={handleUpdate}
                     onUpdateProps={(nextProps) => updateComponentProps(selectedComponent.id, nextProps)}
-                    onDataSourceChange={(id) => handleDataSourceChange(id, 'chart')}
                 />
             );
         }

@@ -82,6 +82,7 @@ export const FilterPropertiesView = ({
                                     fieldKey: nextKey,
                                     value: '',
                                     valueTo: '',
+                                    valueInvalid: false,
                                     ...(column ? { label: column.title } : {}),
                                 });
                             }}
@@ -104,10 +105,11 @@ export const FilterPropertiesView = ({
             <PropertySection title="Тип фильтра">
                 <PropertySelect
                     value={filterType}
-                    onChange={(event) => patch({ filterType: event.target.value, value: '', valueTo: '' })}
+                    onChange={(event) => patch({ filterType: event.target.value, value: '', valueTo: '', valueInvalid: false })}
                     options={[
                         { value: 'status', label: 'По значению (список)' },
                         { value: 'date', label: 'По дате' },
+                        { value: 'number', label: 'По числу (содержит)' },
                         { value: 'field', label: 'По тексту (содержит)' },
                     ]}
                 />

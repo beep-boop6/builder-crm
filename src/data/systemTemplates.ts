@@ -31,12 +31,12 @@ const tableProps = (
 });
 
 const chartProps = (
-    dataSourceId: string,
+    tableComponentId: string,
     chartType: 'bar' | 'line' | 'pie',
     xField: string,
     yField: string
 ) => ({
-    dataSourceId,
+    tableComponentId,
     chartType,
     chartMapping: { xField, yField },
     xAxisKey: xField,
@@ -150,8 +150,8 @@ const salesFunnelComponents: EditorComponent[] = [
         borderColor: '#E8E8E8',
     }),
     comp(SALES.chartStatus, 'chart', 24, CHART_BLOCK_Y, 820, 260, 'Распределение по статусам', chartProps(
-        'src-deals',
-        'bar',
+        SALES.tableDeals,
+        'pie',
         'status',
         'amount'
     ), { zIndex: 2 }),
@@ -298,9 +298,9 @@ const financeComponents: EditorComponent[] = [
         financeTargets
     )),
     comp(FINANCE.chartIncome, 'chart', 24, FINANCE_CONTENT_START_Y, 820, FINANCE_CHART_HEIGHT, 'График доходов', chartProps(
-        'src-sales',
+        FINANCE.tableTx,
         'line',
-        'month',
+        'date',
         'amount'
     ), { zIndex: 2 }),
     comp(FINANCE.tableTx, 'table', 24, FINANCE_TABLE_Y, 820, FINANCE_TABLE_HEIGHT, 'Транзакции', tableProps('src-transactions', [

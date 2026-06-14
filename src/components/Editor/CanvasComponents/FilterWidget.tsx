@@ -9,6 +9,7 @@ import {
     resolveTableColumns,
     resolveTableRows,
 } from '@/utils/tableColumns';
+import { isFilterValueInvalid } from '@/utils/filterValidation';
 import styles from './FilterWidget.module.css';
 
 const FilterBindingStatus = ({
@@ -53,6 +54,7 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
     const label = String(props.label ?? 'Фильтр');
     const value = String(props.value ?? '');
     const valueTo = props.valueTo ? String(props.valueTo) : '';
+    const valueInvalid = props.valueInvalid === true;
 
     const linkedTable = useMemo(
         () => getLinkedTableComponent(canvasComponents, targetIds),
@@ -99,9 +101,17 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
             fieldKey: nextKey,
             value: '',
             valueTo: '',
+            valueInvalid: false,
             ...(column ? { label: column.title } : {}),
         });
     };
+
+    const handleValueChange = (nextValue: string) => {
+        const invalid = isFilterValueInvalid(filterType, tableRows, fieldKey, nextValue);
+        patch({ value: nextValue, valueInvalid: invalid });
+    };
+
+    const textInputStatus = valueInvalid ? 'error' : undefined;
 
     const popupContainer = (trigger: HTMLElement) =>
         rootRef.current ?? trigger.parentElement ?? document.body;
@@ -178,13 +188,30 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
                     size="small"
                     className={styles.control}
                     value={value}
+                    status={textInputStatus}
                     placeholder="Значение для поиска"
-                    onChange={(event) => patch({ value: event.target.value })}
+                    onChange={(event) => handleValueChange(event.target.value)}
+                />
+            ) : null}
+
+            {fieldKey && filterType === 'number' ? (
+                <Input
+                    size="small"
+                    className={styles.control}
+                    value={value}
+                    status={textInputStatus}
+                    placeholder="Числовое значение"
+                    inputMode="decimal"
+                    onChange={(event) => handleValueChange(event.target.value)}
                 />
             ) : null}
 
             {fieldKey && filterType === 'date' && valueTo ? (
                 <span className={styles.rangeHint}>до {valueTo}</span>
+            ) : null}
+
+            {valueInvalid ? (
+                <span className={styles.validationHint}>Введите числовое значение</span>
             ) : null}
         </div>
     );

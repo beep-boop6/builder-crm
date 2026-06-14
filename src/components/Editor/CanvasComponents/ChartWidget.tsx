@@ -3,6 +3,7 @@ import { useDataStore } from '../../../store/dataStore';
 import { applyChartMapping } from '@/utils/dataMapping';
 import { validateChartMapping } from '@/utils/dataValidation';
 import { applyFiltersToRows, collectFiltersForTarget } from '@/utils/componentFilters';
+import { resolveChartRowsFromTable } from '@/utils/chartTableData';
 import { useEditorStore } from '@/store/editorStore';
 import type { ChartFieldMapping, ComponentDataProps } from '@/types/data';
 import {
@@ -82,15 +83,44 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
     const { sources, loadData } = useDataStore();
     const canvasComponents = useEditorStore((state) => state.components);
 
+    const tableComponentId = props.tableComponentId as string | undefined;
     const dataSourceId = props.dataSourceId;
-    const source = sources.find((item) => item.id === dataSourceId);
-    const isConfigured = Boolean(dataSourceId && dataSourceId !== 'none');
+    const linkedTable = useMemo(
+        () => canvasComponents.find((item) => item.id === tableComponentId && item.type === 'table'),
+        [canvasComponents, tableComponentId]
+    );
+    const linkedTableDataSourceId = linkedTable?.props?.dataSourceId as string | undefined;
+    const source = sources.find((item) => item.id === (linkedTableDataSourceId ?? dataSourceId));
+    const isTableMode = Boolean(tableComponentId && linkedTable);
+    const isLegacySourceMode = Boolean(!isTableMode && dataSourceId && dataSourceId !== 'none');
+    const isConfigured = isTableMode || isLegacySourceMode;
 
     useEffect(() => {
-        if (isConfigured && source && !source.data && !source.isLoading && !source.error) {
-            loadData(dataSourceId!);
+        canvasComponents.forEach((item) => {
+            if (item.type !== 'table') {
+                return;
+            }
+            const itemSourceId = item.props?.dataSourceId as string | undefined;
+            if (!itemSourceId || itemSourceId === 'none') {
+                return;
+            }
+            const itemSource = sources.find((entry) => entry.id === itemSourceId);
+            if (itemSource && !itemSource.data && !itemSource.isLoading && !itemSource.error) {
+                loadData(itemSourceId);
+            }
+        });
+
+        if (
+            isLegacySourceMode
+            && dataSourceId
+            && source
+            && !source.data
+            && !source.isLoading
+            && !source.error
+        ) {
+            loadData(dataSourceId);
         }
-    }, [isConfigured, dataSourceId, source, loadData]);
+    }, [canvasComponents, dataSourceId, isLegacySourceMode, loadData, source]);
 
     const chartMapping = (props.chartMapping as ChartFieldMapping | undefined) ?? {
         xField: (props.xAxisKey as string) ?? '',
@@ -98,19 +128,66 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
     };
 
     const chartState = useMemo(() => {
-        if (!isConfigured || !source?.data?.length) {
+        if (!isConfigured) {
             const fallback = applyChartMapping(DEFAULT_DATA, undefined, { xField: 'name', yField: 'value' });
             return {
                 labels: fallback.labels,
                 values: fallback.values,
                 validationError: null as string | null,
+                isLoading: false,
+                loadError: null as string | null,
             };
         }
 
-        const filteredRows = applyFiltersToRows(
-            source.data,
-            collectFiltersForTarget(canvasComponents, componentId)
-        );
+        const tableSourceData = linkedTableDataSourceId
+            ? sources.find((item) => item.id === linkedTableDataSourceId)?.data
+            : undefined;
+
+        const filteredRows = isTableMode && tableComponentId
+            ? resolveChartRowsFromTable(
+                canvasComponents,
+                tableComponentId,
+                componentId,
+                tableSourceData
+            )
+            : source?.data
+                ? applyFiltersToRows(
+                    source.data,
+                    collectFiltersForTarget(canvasComponents, componentId)
+                )
+                : [];
+
+        if (isTableMode && linkedTableDataSourceId && source?.isLoading && filteredRows.length === 0) {
+            return {
+                labels: [],
+                values: [],
+                validationError: null,
+                isLoading: true,
+                loadError: null,
+            };
+        }
+
+        if (source?.error) {
+            return {
+                labels: [],
+                values: [],
+                validationError: null,
+                isLoading: false,
+                loadError: source.error,
+            };
+        }
+
+        if (filteredRows.length === 0) {
+            return {
+                labels: [],
+                values: [],
+                validationError: isConfigured && chartMapping.xField && chartMapping.yField
+                    ? 'Нет данных для построения графика'
+                    : 'Выберите колонки для осей X и Y',
+                isLoading: false,
+                loadError: null,
+            };
+        }
 
         const validation = validateChartMapping(filteredRows, chartMapping);
         if (!validation.valid) {
@@ -118,6 +195,8 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
                 labels: [],
                 values: [],
                 validationError: validation.error ?? 'Ошибка настройки данных графика',
+                isLoading: false,
+                loadError: null,
             };
         }
 
@@ -130,8 +209,23 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             labels: mapped.labels,
             values: mapped.values,
             validationError: null as string | null,
+            isLoading: false,
+            loadError: null,
         };
-    }, [canvasComponents, chartMapping, componentId, isConfigured, props.xAxisKey, props.yAxisKey, source?.data]);
+    }, [
+        canvasComponents,
+        chartMapping,
+        componentId,
+        isConfigured,
+        isTableMode,
+        linkedTableDataSourceId,
+        props.xAxisKey,
+        props.yAxisKey,
+        source?.data,
+        source?.error,
+        source?.isLoading,
+        tableComponentId,
+    ]);
 
     const chartType = (props.chartType as string) || 'bar';
     const seriesColor = normalizeHex(
@@ -200,17 +294,22 @@ export const ChartWidget: React.FC<ChartWidgetProps> = ({ componentId, props, fi
             }),
     }), [backgroundColor, chartType]);
 
+    const showOverlay = !isConfigured
+        || chartState.isLoading
+        || chartState.loadError
+        || chartState.validationError;
+
     return (
         <div
             id={componentId}
             className={styles.chartContainer}
             style={{ backgroundColor }}
         >
-            {(!isConfigured || source?.isLoading || source?.error || chartState.validationError) && (
+            {showOverlay && (
                 <div className={styles.overlay} style={{ backgroundColor: `${backgroundColor}d9` }}>
-                    {!isConfigured && <span className={styles.overlayText}>Выберите данные</span>}
-                    {source?.isLoading && <span className={styles.overlayText}>Загрузка...</span>}
-                    {source?.error && <span className={styles.overlayTextError}>{source.error}</span>}
+                    {!isConfigured && <span className={styles.overlayText}>Выберите таблицу</span>}
+                    {chartState.isLoading && <span className={styles.overlayText}>Загрузка...</span>}
+                    {chartState.loadError && <span className={styles.overlayTextError}>{chartState.loadError}</span>}
                     {chartState.validationError && (
                         <span className={styles.overlayTextWarning}>{chartState.validationError}</span>
                     )}
