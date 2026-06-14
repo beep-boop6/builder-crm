@@ -91,7 +91,7 @@ const CreateApp = () => {
                 <Alert
                     type="error"
                     showIcon
-                    message="Ошибка загрузки проектов"
+                    title="Ошибка загрузки проектов"
                     description={error}
                     style={{ marginBottom: 16 }}
                 />
