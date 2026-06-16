@@ -1,5 +1,6 @@
 import type { ChartFieldMapping, TableColumnMapping } from '@/types/data';
 import type { DataRow } from '@/utils/dataValidation';
+import { formatFieldLabel } from '@/utils/displayLabels';
 
 /** Стабильный идентификатор строки таблицы (не совпадает с колонкой данных `id`). */
 export const TABLE_ROW_ID_KEY = '__rowId';
@@ -34,7 +35,7 @@ export const getAvailableFields = (rows: DataRow[]): string[] => {
 export const buildDefaultTableMappings = (rows: DataRow[]): TableColumnMapping[] => {
     return getAvailableFields(rows).map((field) => ({
         sourceField: field,
-        title: field,
+        title: formatFieldLabel(field),
     }));
 };
 
@@ -44,7 +45,7 @@ export const applyTableMapping = (
 ) => {
     if (!mappings || mappings.length === 0) {
         const fields = getAvailableFields(rows);
-        const columns = fields.map((field) => ({ id: field, title: field }));
+        const columns = fields.map((field) => ({ id: field, title: formatFieldLabel(field) }));
         const data = rows.map((row, index) => ({
             ...row,
             [TABLE_ROW_ID_KEY]: String(row.id ?? `row-${index}`),
@@ -54,7 +55,7 @@ export const applyTableMapping = (
 
     const columns = mappings.map((mapping) => ({
         id: mapping.sourceField,
-        title: mapping.title || mapping.sourceField,
+        title: mapping.title || formatFieldLabel(mapping.sourceField),
     }));
 
     const data = rows.map((row, index) => {

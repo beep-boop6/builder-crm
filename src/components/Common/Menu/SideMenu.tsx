@@ -24,7 +24,7 @@ export const SideMenu = () => {
         <div className={styles.sideMenu}>
             {/* 1. Логотип - отступ от верхнего края 15px */}
             <div className={styles.logoSection} onClick={handleHomeClick}>
-                <img src={logoIcon} alt="Logo" className={styles.logoImage}/>
+                <img src={logoIcon} alt="Логотип" className={styles.logoImage}/>
             </div>
 
             <div className={styles.upperPanel}>
@@ -34,7 +34,7 @@ export const SideMenu = () => {
                     title="Главная"
 
                 >
-                    <img src={homeIcon} alt="Home" className={styles.iconImage}/>
+                    <img src={homeIcon} alt="Главная" className={styles.iconImage}/>
                 </button>
 
                 {/* 3. Кнопка создания приложения - отступ от верхнего края 25px */}
@@ -44,7 +44,7 @@ export const SideMenu = () => {
                     title="Создать приложение"
                     style={{marginTop: '25px'}}
                 >
-                    <img src={createAppIcon} alt="Create App" className={styles.iconImage}/>
+                    <img src={createAppIcon} alt="Создать приложение" className={styles.iconImage}/>
                 </button>
             </div>
 
@@ -56,7 +56,7 @@ export const SideMenu = () => {
                     onClick={handleSettingsClick}
                     title="Настройки"
                 >
-                    <img src={settingsIcon} alt="Settings" className={styles.iconImage}/>
+                    <img src={settingsIcon} alt="Настройки" className={styles.iconImage}/>
                 </button>
             </div>
         </div>

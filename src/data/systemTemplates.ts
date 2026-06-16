@@ -190,7 +190,7 @@ const clientsBaseComponents: EditorComponent[] = [
     }, primaryButton),
     comp(CLIENTS.search, 'form', 240, TOP_ROW_Y, 420, 56, 'Поиск', {
         formMode: 'search',
-        fields: [{ name: 'name', label: 'Поиск клиентов', type: 'text', placeholder: 'Имя, телефон или email' }],
+        fields: [{ name: 'name', label: 'Поиск клиентов', type: 'text', placeholder: 'Имя, телефон или электронная почта' }],
         layout: 'horizontal',
         textAlign: 'left',
         submitLabel: 'Найти',

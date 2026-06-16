@@ -9,7 +9,7 @@
     overflow-x: hidden;
     overflow-y: hidden;
     box-sizing: border-box;
-    background: #ffffff;
+    background: var(--crm-surface);
 }
 
 .typeFilter {
@@ -27,7 +27,7 @@
     font-family: 'Raleway', sans-serif;
     font-size: 18px;
     font-weight: 500;
-    color: #1a1a1a;
+    color: var(--crm-text);
     white-space: nowrap;
 }
 

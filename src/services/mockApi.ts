@@ -67,7 +67,7 @@ export const mockApi = {
         const projects = getStoredProjects();
         const index = projects.findIndex(p => p.id === id);
         
-        if (index === -1) throw new Error('Project not found');
+        if (index === -1) throw new Error('Проект не найден');
         
         const updatedProject = { ...projects[index], ...data, updatedAt: new Date().toISOString() };
         projects[index] = updatedProject;
@@ -90,7 +90,7 @@ export const mockApi = {
 
     createPage: async (projectId: string, data: { title: string; route: string }): Promise<Page> => {
         const project = await mockApi.getProject(projectId);
-        if (!project) throw new Error('Project not found');
+        if (!project) throw new Error('Проект не найден');
         
         const newPage: Page = {
             id: generateId(),
@@ -111,7 +111,7 @@ export const mockApi = {
 
     deletePage: async (projectId: string, pageId: string): Promise<void> => {
         const project = await mockApi.getProject(projectId);
-        if (!project) throw new Error('Project not found');
+        if (!project) throw new Error('Проект не найден');
         
         const updatedProject = {
             ...project,
@@ -130,10 +130,10 @@ export const mockApi = {
 
     createComponent: async (projectId: string, pageId: string, data: Partial<EditorComponent>): Promise<EditorComponent> => {
         const project = await mockApi.getProject(projectId);
-        if (!project) throw new Error('Project not found');
+        if (!project) throw new Error('Проект не найден');
         
         const pageIndex = project.pages?.findIndex(p => p.id === pageId);
-        if (pageIndex === undefined || pageIndex === -1) throw new Error('Page not found');
+        if (pageIndex === undefined || pageIndex === -1) throw new Error('Страница не найдена');
         
         const newComponent: EditorComponent = {
             id: generateId(),
@@ -163,13 +163,13 @@ export const mockApi = {
 
     updateComponent: async (projectId: string, pageId: string, componentId: string, data: Partial<EditorComponent>): Promise<EditorComponent> => {
         const project = await mockApi.getProject(projectId);
-        if (!project) throw new Error('Project not found');
+        if (!project) throw new Error('Проект не найден');
         
         const pageIndex = project.pages?.findIndex(p => p.id === pageId);
-        if (pageIndex === undefined || pageIndex === -1) throw new Error('Page not found');
+        if (pageIndex === undefined || pageIndex === -1) throw new Error('Страница не найдена');
         
         const componentIndex = project.pages[pageIndex].components?.findIndex(c => c.id === componentId);
-        if (componentIndex === undefined || componentIndex === -1) throw new Error('Component not found');
+        if (componentIndex === undefined || componentIndex === -1) throw new Error('Компонент не найден');
         
         const updatedPages = [...(project.pages || [])];
         const updatedComponents = [...(updatedPages[pageIndex].components || [])];
@@ -182,10 +182,10 @@ export const mockApi = {
 
     deleteComponent: async (projectId: string, pageId: string, componentId: string): Promise<void> => {
         const project = await mockApi.getProject(projectId);
-        if (!project) throw new Error('Project not found');
+        if (!project) throw new Error('Проект не найден');
         
         const pageIndex = project.pages?.findIndex(p => p.id === pageId);
-        if (pageIndex === undefined || pageIndex === -1) throw new Error('Page not found');
+        if (pageIndex === undefined || pageIndex === -1) throw new Error('Страница не найдена');
         
         const updatedPages = [...(project.pages || [])];
         updatedPages[pageIndex] = {

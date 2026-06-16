@@ -25,7 +25,7 @@ const MainPage = () => {
 
             <div className={styles.containerButtons}>
                 <button className={styles.createButton} onClick={handleCreateClick}>
-                    <img src="/src/assets/icons/edit_no_active-light.svg" alt="Edit" className={styles.buttonIcon}/>
+                    <img src="/src/assets/icons/edit_no_active-light.svg" alt="Редактирование" className={styles.buttonIcon}/>
                     <h3 className={styles.buttonTitle}>Создать пустое приложение</h3>
                     <p className={styles.buttonDescription}>
                         Создавайте собственные приложения для повышения эффективности
@@ -33,7 +33,7 @@ const MainPage = () => {
                 </button>
 
                 <button className={styles.createButton} onClick={handleTemplateClick}>
-                    <img src="/src/assets/icons/template.svg" alt="Template" className={styles.buttonIcon}/>
+                    <img src="/src/assets/icons/template.svg" alt="Шаблон" className={styles.buttonIcon}/>
                     <h3 className={styles.buttonTitle}>Выбрать удобный шаблон</h3>
                     <p className={styles.buttonDescription}>
                         Приступайте к работе с готовыми вариантами проектов

@@ -1,6 +1,7 @@
 import type { TableColumnMapping } from '@/types/data';
 import type { DataSource } from '@/store/dataStore';
 import { buildDefaultTableMappings } from '@/utils/dataMapping';
+import { formatFieldLabel } from '@/utils/displayLabels';
 import { validateChartMapping, validateTableMapping } from '@/utils/dataValidation';
 import type { DataRow } from '@/utils/dataValidation';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -66,7 +67,7 @@ export const TableMappingSection = ({
                         onChange={(event) => updateMapping(index, { sourceField: event.target.value })}
                         options={[
                             { value: '', label: 'Колонка источника' },
-                            ...fields.map((field) => ({ value: field, label: field })),
+                            ...fields.map((field) => ({ value: field, label: formatFieldLabel(field) })),
                         ]}
                     />
                     <PropertyTextInput
@@ -192,7 +193,7 @@ export const ChartMappingSection = ({
 
     const fieldOptions = [
         { value: '', label: 'Выберите поле' },
-        ...fields.map((field) => ({ value: field, label: field })),
+        ...fields.map((field) => ({ value: field, label: formatFieldLabel(field) })),
     ];
 
     return (

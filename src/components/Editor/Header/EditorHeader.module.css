@@ -5,8 +5,8 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 0 24px;
-    background: #ffffff;
-    border-bottom: 1px solid #f0f0f0;
+    background: var(--crm-surface);
+    border-bottom: 1px solid var(--crm-border);
     box-sizing: border-box;
     z-index: 10;
 }
@@ -35,13 +35,14 @@
 }
 
 .logoButton:hover {
-    background: #f5f5f5;
+    background: var(--crm-hover);
 }
 
 .logoImage {
     width: 30px;
     height: 30px;
     display: block;
+    filter: var(--crm-icon-filter);
 }
 
 .crumbLink {
@@ -51,20 +52,20 @@
     font-family: 'Raleway', sans-serif;
     font-size: 16px;
     font-weight: 500;
-    color: #1a1a1a;
+    color: var(--crm-text);
     cursor: pointer;
     transition: color 0.2s ease;
 }
 
 .crumbLink:hover {
-    color: #155DA4;
+    color: var(--crm-accent);
 }
 
 .crumbCurrent {
     font-family: 'Raleway', sans-serif;
     font-size: 16px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--crm-text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -103,6 +104,7 @@
     width: 18px;
     height: 18px;
     display: block;
+    filter: var(--crm-icon-filter);
 }
 
 .historyIconRedo {
@@ -114,8 +116,8 @@
     font-family: 'Raleway', sans-serif;
     font-size: 16px;
     font-weight: 600;
-    color: #1a1a1a;
-    border-bottom: 1px solid #155DA4;
+    color: var(--crm-text);
+    border-bottom: 1px solid var(--crm-brand);
     padding: 0 6px 5px;
     line-height: 1.45;
     white-space: nowrap;
@@ -144,7 +146,7 @@
 }
 
 .themeButton:hover {
-    background: #f5f5f5;
+    background: var(--crm-hover);
 }
 
 .themeIcon {
@@ -156,9 +158,9 @@
 .previewBackButton {
     padding: 6px 14px;
     border-radius: 6px;
-    border: 1px solid #155DA4;
-    background: #fff;
-    color: #155DA4;
+    border: 1px solid var(--crm-brand);
+    background: var(--crm-surface);
+    color: var(--crm-brand);
     font-family: 'Raleway', sans-serif;
     font-size: 14px;
     font-weight: 500;
@@ -167,5 +169,5 @@
 }
 
 .previewBackButton:hover {
-    background: #e6f2ff;
+    background: var(--crm-brand-bg);
 }

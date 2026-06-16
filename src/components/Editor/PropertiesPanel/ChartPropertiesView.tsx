@@ -125,9 +125,9 @@ export const ChartPropertiesView = ({
                             value={(component.props?.chartType as string) || 'bar'}
                             onChange={(event) => onUpdateProps({ chartType: event.target.value })}
                             options={[
-                                { value: 'bar', label: 'Столбчатый (Bar)' },
-                                { value: 'line', label: 'Линейный (Line)' },
-                                { value: 'pie', label: 'Круговая (Pie)' },
+                                { value: 'bar', label: 'Столбчатый' },
+                                { value: 'line', label: 'Линейный' },
+                                { value: 'pie', label: 'Круговой' },
                             ]}
                         />
                     </PropertySection>

@@ -158,7 +158,7 @@ export const CardPropertiesView = ({
                     onChange={(event) => patchContact({ email: event.target.value })}
                 />
                 <PropertyButton variant="ghost" onClick={() => handleClearField('email')}>
-                    Удалить email
+                    Удалить электронную почту
                 </PropertyButton>
 
                 <PropertyTextInput

@@ -208,7 +208,7 @@ const AdminPage = () => {
                 type="info"
                 showIcon
                 className={styles.alert}
-                message={`Режим данных: ${isMockEnabled ? 'mock (localStorage)' : 'backend API'}`}
+                message={`Режим данных: ${isMockEnabled ? 'локальные данные (localStorage)' : 'серверный API'}`}
                 description="Изменения библиотеки компонентов сохраняются локально и сразу доступны в редакторе."
             />
 
@@ -234,7 +234,7 @@ const AdminPage = () => {
                         name="type"
                         rules={[{ required: true, message: 'Укажите тип компонента' }]}
                     >
-                        <Input disabled={Boolean(editingType)} placeholder="badge, timeline, map..." />
+                        <Input disabled={Boolean(editingType)} placeholder="бейдж, таймлайн, карта…" />
                     </Form.Item>
                     <Form.Item
                         label="Название"

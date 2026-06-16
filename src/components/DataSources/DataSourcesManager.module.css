@@ -8,7 +8,7 @@
 .infoBox {
     padding: 16px 18px;
     border-radius: 8px;
-    background: #e6f2ff;
+    background: var(--crm-brand-bg);
     border: 1px solid #c5ddf5;
 }
 
@@ -23,7 +23,7 @@
     margin: 0;
     font-size: 14px;
     line-height: 1.55;
-    color: #333333;
+    color: var(--crm-text);
 }
 
 .section {
@@ -36,7 +36,7 @@
     margin: 0;
     font-size: 20px;
     font-weight: 700;
-    color: #000000;
+    color: var(--crm-text);
 }
 
 .form {
@@ -44,9 +44,9 @@
     flex-direction: column;
     gap: 18px;
     padding: 20px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--crm-border-strong);
     border-radius: 8px;
-    background: #fafafa;
+    background: var(--crm-surface-secondary);
 }
 
 .field {
@@ -62,13 +62,13 @@
 .label {
     font-size: 14px;
     font-weight: 600;
-    color: #000000;
+    color: var(--crm-text);
 }
 
 .hint {
     font-size: 13px;
     line-height: 1.45;
-    color: #888888;
+    color: var(--crm-text-secondary);
 }
 
 .input,
@@ -76,12 +76,12 @@
     width: 100%;
     box-sizing: border-box;
     padding: 10px 12px;
-    border: 1.5px solid #e0e0e0;
+    border: 1.5px solid var(--crm-border-strong);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--crm-surface);
     font-family: inherit;
     font-size: 14px;
-    color: #333333;
+    color: var(--crm-text);
     transition: border-color 0.15s ease;
 }
 
@@ -111,9 +111,9 @@
     align-items: flex-start;
     gap: 10px;
     padding: 12px 14px;
-    border: 1.5px solid #e0e0e0;
+    border: 1.5px solid var(--crm-border-strong);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--crm-surface);
     cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease;
 }
@@ -138,7 +138,7 @@
 .typeOptionTitle {
     font-size: 14px;
     font-weight: 600;
-    color: #000000;
+    color: var(--crm-text);
 }
 
 .typeOptionHint {
@@ -177,13 +177,13 @@
 .secondaryButton {
     padding: 8px 14px;
     border: 1.5px solid #155DA4;
-    background: #ffffff;
+    background: var(--crm-surface);
     color: #155DA4;
     font-size: 13px;
 }
 
 .secondaryButton:hover {
-    background: #e6f2ff;
+    background: var(--crm-brand-bg);
 }
 
 .dangerButton {
@@ -223,9 +223,9 @@
     justify-content: space-between;
     gap: 16px;
     padding: 16px 18px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--crm-border-strong);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--crm-surface);
 }
 
 .sourceMain {
@@ -246,14 +246,14 @@
 .sourceName {
     font-size: 16px;
     font-weight: 700;
-    color: #000000;
+    color: var(--crm-text);
 }
 
 .typeBadge {
     display: inline-block;
     padding: 3px 10px;
     border-radius: 6px;
-    background: #e6f2ff;
+    background: var(--crm-brand-bg);
     border: 1px solid #155DA4;
     color: #155DA4;
     font-size: 12px;
@@ -263,14 +263,14 @@
 .sourceEndpoint {
     margin: 0;
     font-size: 13px;
-    color: #595959;
+    color: var(--crm-text-secondary);
     word-break: break-all;
 }
 
 .sourceFields {
     margin: 0;
     font-size: 12px;
-    color: #888888;
+    color: var(--crm-text-secondary);
     line-height: 1.4;
 }
 
@@ -285,7 +285,7 @@
 }
 
 .status_loading {
-    background: #f5f5f5;
+    background: var(--crm-bg);
     color: #666666;
 }
 
@@ -300,9 +300,9 @@
 }
 
 .status_idle {
-    background: #fafafa;
-    color: #8c8c8c;
-    border: 1px solid #eeeeee;
+    background: var(--crm-surface-secondary);
+    color: var(--crm-text-secondary);
+    border: 1px solid var(--crm-border-subtle);
 }
 
 .sourceActions {
@@ -320,7 +320,7 @@
     background: #fafcff;
     font-size: 15px;
     line-height: 1.5;
-    color: #8c8c8c;
+    color: var(--crm-text-secondary);
 }
 
 @media (max-width: 640px) {

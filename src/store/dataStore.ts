@@ -50,7 +50,7 @@ const DEFAULT_SOURCES: DataSource[] = [
     },
     {
         id: 'src-deals',
-        name: 'Сделки (CRM)',
+        name: 'Сделки',
         type: 'mock',
         endpoint: 'deals',
         data: null,
@@ -60,7 +60,7 @@ const DEFAULT_SOURCES: DataSource[] = [
     },
     {
         id: 'src-clients',
-        name: 'Клиенты (CRM)',
+        name: 'Клиенты',
         type: 'mock',
         endpoint: 'clients',
         data: null,

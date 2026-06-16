@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ChartFieldMapping, TableColumnMapping } from '@/types/data';
+import { formatFieldLabel } from '@/utils/displayLabels';
 
 const DataCellSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const DataRowSchema = z.record(z.string(), DataCellSchema);
@@ -67,7 +68,7 @@ export const validateTableMapping = (
     if (missing.length > 0) {
         return {
             valid: false,
-            error: `В данных нет полей: ${missing.join(', ')}`,
+            error: `В данных нет полей: ${missing.map(formatFieldLabel).join(', ')}`,
         };
     }
 
@@ -102,7 +103,7 @@ export const validateChartMapping = (
     if (missing.length > 0) {
         return {
             valid: false,
-            error: `В данных нет полей: ${missing.join(', ')}`,
+            error: `В данных нет полей: ${missing.map(formatFieldLabel).join(', ')}`,
         };
     }
 
@@ -114,7 +115,7 @@ export const validateChartMapping = (
     if (!hasNumericY) {
         return {
             valid: false,
-            error: `Поле «${mapping.yField}» должно содержать числовые значения`,
+            error: `Поле «${formatFieldLabel(mapping.yField)}» должно содержать числовые значения`,
         };
     }
 

@@ -10,6 +10,7 @@ import {
     resolveTableRows,
 } from '@/utils/tableColumns';
 import { isFilterValueInvalid } from '@/utils/filterValidation';
+import { formatDisplayValue } from '@/utils/displayLabels';
 import { getCanvasPopupContainer, useCanvasPortal } from '@/components/Editor/Canvas/CanvasPortalContext';
 import styles from './FilterWidget.module.css';
 
@@ -35,10 +36,10 @@ interface FilterWidgetProps {
 }
 
 const FALLBACK_STATUS_OPTIONS = [
-    { value: 'lead', label: 'Лид' },
-    { value: 'negotiation', label: 'Переговоры' },
-    { value: 'deal', label: 'Сделка' },
-    { value: 'closed', label: 'Закрыто' },
+    { value: 'Лид', label: 'Лид' },
+    { value: 'Переговоры', label: 'Переговоры' },
+    { value: 'Сделка', label: 'Сделка' },
+    { value: 'Закрыто', label: 'Закрыто' },
 ];
 
 export const FilterWidget = ({ component, showBindingStatus = false }: FilterWidgetProps) => {
@@ -88,7 +89,7 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
         if (distinct.length === 0) {
             return FALLBACK_STATUS_OPTIONS;
         }
-        return distinct.map((item) => ({ value: item, label: item }));
+        return distinct.map((item) => ({ value: item, label: formatDisplayValue(item) }));
     }, [fieldKey, tableRows]);
 
     const patch = (patchProps: Record<string, unknown>) => {

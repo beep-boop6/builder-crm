@@ -3,9 +3,9 @@
     flex-direction: column;
     gap: 8px;
     padding: 10px;
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--crm-border-strong);
     border-radius: 8px;
-    background: #fafafa;
+    background: var(--crm-surface-deep);
 }
 
 .phoneRowHeader {
@@ -17,7 +17,7 @@
 .phoneRowLabel {
     font-size: 12px;
     font-weight: 600;
-    color: #155DA4;
+    color: var(--crm-panel-field-accent);
 }
 
 .phoneActions {
@@ -31,7 +31,7 @@
     height: 64px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #155DA4;
+    border: 2px solid var(--crm-panel-input-border);
 }
 
 .photoBlock {
@@ -50,12 +50,12 @@
     gap: 10px;
     padding: 4px 0;
     font-size: 14px;
-    color: #333;
+    color: var(--crm-text);
 }
 
 .checkboxRow input[type='checkbox'] {
     width: 16px;
     height: 16px;
-    accent-color: #155DA4;
+    accent-color: var(--crm-panel-align-active-bg);
     cursor: pointer;
 }

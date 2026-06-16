@@ -7,6 +7,7 @@ import { buildComponentFromDefinition, buildComponentFromSnapshot } from '@/util
 import { clampComponentAfterResize, getComponentResizeBounds } from '@/utils/formResize';
 import { isFormSearchMode, SEARCH_FORM_BORDER_RADIUS } from '@/utils/formLayout';
 import { CanvasPortalContext } from './CanvasPortalContext';
+import { CanvasConfigProvider } from './CanvasConfigProvider';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
@@ -265,6 +266,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
 
     return (
         <CanvasPortalContext.Provider value={canvasElement}>
+        <CanvasConfigProvider>
         <div
             ref={handleCanvasRef}
             className={styles.canvas}
@@ -294,7 +296,6 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                     boxShadow: borderWidth > 0 ? `0 0 0 ${borderWidth}px ${borderColor}` : 'none',
                     outline: isSelected ? '2px solid #1890ff' : 'none',
                     outlineOffset: 0,
-                    opacity: (readonly && (componentProps.disabled)) ? 0.5 : opacity,
                     pointerEvents: (readonly && (componentProps.disabled)) ? 'none' : 'auto',
                     fontFamily: (componentProps.fontFamily as string) || 'Raleway, sans-serif',
                     fontWeight: component.fontWeight ?? 500,
@@ -324,7 +325,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                         style={{
                             boxSizing: 'border-box',
                             zIndex: component.zIndex || 1,
-                            opacity,
+                            opacity: readonly && componentProps.disabled ? 0.5 : opacity,
                             overflow: component.type === 'filter' ? 'visible' : isSearchForm ? 'visible' : undefined,
                         }}
                         bounds="parent"
@@ -394,6 +395,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 </div>
             )}
         </div>
+        </CanvasConfigProvider>
         </CanvasPortalContext.Provider>
     );
 };

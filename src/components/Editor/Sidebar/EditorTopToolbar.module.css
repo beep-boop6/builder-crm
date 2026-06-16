@@ -6,9 +6,9 @@
     z-index: 60;
     display: flex;
     align-items: center;
-    background: #ffffff;
+    background: var(--crm-surface);
     border-radius: 16px;
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 16px var(--crm-shadow);
     padding: 10px 20px;
     pointer-events: auto;
 }

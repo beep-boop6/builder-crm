@@ -133,7 +133,7 @@ const CreateApp = () => {
                                     onClick={(e) => handleDeleteProject(e, project.id)}
                                     title="Удалить проект"
                                 >
-                                    <img src="/src/assets/icons/delete.svg" alt="Delete" width={16} height={16} />
+                                    <img src="/src/assets/icons/delete.svg" alt="Удалить" width={16} height={16} />
                                 </button>
                                 <div className={styles.projectIcon}>
                                     📁

@@ -66,7 +66,7 @@ export const CardVariantPropertiesView = ({ component, onUpdateProps }: Props) =
 
     if (variant === 'kpi') {
         return (
-            <PropertySection title="KPI">
+            <PropertySection title="Показатель KPI">
                 <PropertyTextInput
                     value={String(props.kpiLabel ?? '')}
                     placeholder="Название показателя"

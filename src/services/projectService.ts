@@ -85,7 +85,7 @@ export const projectService = {
         if (isMockEnabled) {
             const project = await mockApi.getProject(id);
             if (!project) {
-                throw new Error('Project not found');
+                throw new Error('Проект не найден');
             }
             return project;
         }

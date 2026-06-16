@@ -72,5 +72,5 @@ export const requestWithFallback = async <TResponse, TData = unknown>(
         }
     }
 
-    throw lastError || new Error('API request failed');
+    throw lastError || new Error('Запрос к API не выполнен');
 };

@@ -19,6 +19,7 @@
     text-align: center;
     padding: 24px 16px;
     overflow-y: auto;
+    background: var(--crm-surface);
 }
 
 .title {
@@ -29,7 +30,7 @@
     max-width: 600px;
     margin-bottom: 30px;
     line-height: 1.3;
-    color: #1a1a1a;
+    color: var(--crm-text);
 }
 
 .titleItalic {
@@ -43,16 +44,16 @@
     text-align: center;
     max-width: 590px;
     margin: 0 0 32px 0;
-    color: #595959;
+    color: var(--crm-text-secondary);
 }
 
 .createButton {
     width: 316px;
     height: 55px;
     border-radius: 8px;
-    background: #155DA4;
-    color: white;
-    border: none;
+    background: var(--crm-btn-primary-bg);
+    color: var(--crm-btn-primary-text);
+    border: 1.5px solid var(--crm-btn-primary-border);
     font-family: 'Raleway', sans-serif;
     font-weight: 600;
     font-size: 16px;
@@ -61,14 +62,14 @@
 }
 
 .createButton:hover {
-    opacity: 0.9;
+    opacity: 0.92;
 }
 
 .projectsSection {
     width: 100%;
     flex: 0 0 auto;
     flex-shrink: 0;
-    background: #f5f5f5;
+    background: var(--crm-canvas);
     padding: 20px 70px 24px;
     box-sizing: border-box;
     display: flex;
@@ -81,7 +82,7 @@
     font-weight: 400;
     font-size: 20px;
     margin: 0 0 20px 0;
-    color: #1a1a1a;
+    color: var(--crm-text);
 }
 
 .carouselContainer {
@@ -111,7 +112,7 @@
 .projectCard {
     width: 200px;
     height: 180px;
-    background: white;
+    background: var(--crm-surface);
     border-radius: 8px;
     flex-shrink: 0;
     cursor: pointer;
@@ -119,15 +120,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     padding: 20px;
     box-sizing: border-box;
     position: relative;
 }
 
 .projectCard:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-bottom: 2px solid #155DA4;
+    box-shadow: 0 4px 12px var(--crm-shadow-strong);
     transform: translateY(-2px);
 }
 
@@ -139,7 +139,7 @@
     height: 28px;
     border-radius: 4px;
     background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #d9d9d9;
+    border: 1px solid var(--crm-input-border);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -161,6 +161,7 @@
     width: 20px;
     height: 20px;
     display: block;
+    filter: var(--crm-icon-filter);
 }
 
 .arrowRight {
@@ -170,7 +171,7 @@
 .projectIcon {
     width: 60px;
     height: 60px;
-    background: #e6f0ff;
+    background: var(--crm-brand-bg);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -182,7 +183,7 @@
     font-family: 'Raleway', sans-serif;
     font-weight: 600;
     font-size: 14px;
-    color: #1a1a1a;
+    color: var(--crm-text);
     text-align: center;
 }
 
@@ -210,9 +211,9 @@
     width: 300px;
     height: 50px;
     border-radius: 8px;
-    border: 2px solid #155DA4;
-    background: transparent;
-    color: #155DA4;
+    border: 1.5px solid var(--crm-btn-ghost-border);
+    background: var(--crm-btn-ghost-bg);
+    color: var(--crm-btn-ghost-text);
     font-family: 'Raleway', sans-serif;
     font-weight: 600;
     font-size: 16px;
@@ -223,7 +224,7 @@
 }
 
 .templatesButton:hover {
-    background: rgba(21, 93, 164, 0.1);
+    background: var(--crm-hover);
 }
 
 /* Modal styles */
@@ -233,7 +234,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--crm-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -241,7 +242,7 @@
 }
 
 .modalContent {
-    background: white;
+    background: var(--crm-surface);
     padding: 40px;
     border-radius: 12px;
     width: 500px;
@@ -253,7 +254,7 @@
     font-weight: 600;
     font-size: 24px;
     margin: 0 0 20px 0;
-    color: #1a1a1a;
+    color: var(--crm-text);
 }
 
 .formGroup {
@@ -266,13 +267,13 @@
     font-weight: 500;
     font-size: 14px;
     margin-bottom: 8px;
-    color: #1a1a1a;
+    color: var(--crm-text);
 }
 
 .input {
     width: 100%;
     padding: 12px;
-    border: 1px solid #d9d9d9;
+    border: 1px solid var(--crm-input-border);
     border-radius: 8px;
     font-family: 'Raleway', sans-serif;
     font-size: 14px;
@@ -289,9 +290,9 @@
 .cancelButton {
     padding: 10px 20px;
     border-radius: 8px;
-    background: #f5f5f5;
-    border: 1px solid #d9d9d9;
-    color: #1a1a1a;
+    background: var(--crm-bg);
+    border: 1px solid var(--crm-input-border);
+    color: var(--crm-text);
     font-family: 'Raleway', sans-serif;
     cursor: pointer;
 }

@@ -11,7 +11,7 @@ export const EditorSidebar = (props: EditorSidebarProps) => {
     return (
         <div className={styles.editorSidebar}>
             <div className={styles.logoSection} onClick={() => navigate('/create-app')}>
-                <img src={logoIcon} alt="Logo" className={styles.logoImage} />
+                <img src={logoIcon} alt="Логотип" className={styles.logoImage} />
             </div>
 
             <EditorToolbarButtons variant="sidebar" {...props} />

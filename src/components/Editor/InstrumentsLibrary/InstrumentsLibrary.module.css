@@ -12,10 +12,10 @@
 .libraryPanel {
     width: 100%;
     height: 100%;
-    background: #FFFFFF;
-    border: 1px solid #e0e0e0;
+    background: var(--crm-surface);
+    border: 1px solid var(--crm-border-strong);
     border-radius: 8px;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    box-shadow: 4px 0 15px var(--crm-shadow);
     display: flex;
     flex-direction: column;
     font-family: 'Raleway', sans-serif;
@@ -59,7 +59,7 @@
 }
 
 .searchToggle:hover {
-    background: #e6f2ff;
+    background: var(--crm-brand-bg);
 }
 
 .searchIconImage {
@@ -118,7 +118,7 @@
     margin: 0;
     font-size: 28px;
     font-weight: 700;
-    color: #000000;
+    color: var(--crm-text);
 }
 
 .section {
@@ -128,7 +128,7 @@
 .sectionTitle {
     font-size: 18px;
     font-weight: 700;
-    color: #000000;
+    color: var(--crm-text);
     margin-bottom: 16px;
 }
 
@@ -146,7 +146,7 @@
     min-height: 80px;
     font-family: 'Raleway', sans-serif;
     font-size: 16px;
-    color: #8c8c8c;
+    color: var(--crm-text-secondary);
     text-align: center;
 }
 
@@ -158,7 +158,7 @@
     min-height: 80px;
     font-family: 'Raleway', sans-serif;
     font-size: 16px;
-    color: #8c8c8c;
+    color: var(--crm-text-secondary);
     text-align: center;
 }
 
@@ -180,9 +180,9 @@
 .componentBox {
     width: 100%;
     aspect-ratio: 1;
-    border: 1.5px solid #155DA4;
+    border: 1.5px solid var(--crm-border-strong);
     border-radius: 12px;
-    background: #FFFFFF;
+    background: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -202,7 +202,7 @@
 .itemLabel {
     font-size: 13px;
     font-weight: 500;
-    color: #333333;
+    color: var(--crm-text);
     text-align: center;
 }
 
@@ -215,6 +215,7 @@
     object-fit: contain;
     pointer-events: none;
     user-select: none;
+    filter: var(--crm-icon-filter);
 }
 
 .fallbackIcon {

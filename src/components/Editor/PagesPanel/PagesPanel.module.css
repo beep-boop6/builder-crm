@@ -12,10 +12,10 @@
 .pagesPanel {
     width: 100%;
     height: 100%;
-    background: #FFFFFF;
-    border: 1px solid #e0e0e0;
+    background: var(--crm-surface);
+    border: 1px solid var(--crm-border-strong);
     border-radius: 8px;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    box-shadow: 4px 0 15px var(--crm-shadow);
     display: flex;
     flex-direction: column;
     font-family: 'Raleway', sans-serif;
@@ -28,7 +28,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 24px 20px 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--crm-border-subtle);
     flex-shrink: 0;
 }
 
@@ -36,7 +36,7 @@
     margin: 0;
     font-size: 24px;
     font-weight: 700;
-    color: #000000;
+    color: var(--crm-text);
 }
 
 .editToggle {
@@ -55,7 +55,7 @@
 }
 
 .editToggle:hover:not(:disabled) {
-    background: #e6f2ff;
+    background: var(--crm-brand-bg);
 }
 
 .editToggle:disabled {
@@ -110,15 +110,15 @@
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background: #e6f2ff;
-    border: 1px solid #c5ddf5;
+    background: var(--crm-page-header-bg);
+    border: 1px solid var(--crm-page-header-border);
     border-radius: 8px;
     min-height: 44px;
     box-sizing: border-box;
 }
 
 .pageHeaderActive {
-    border-color: #155DA4;
+    border-color: var(--crm-accent);
 }
 
 .expandButton {
@@ -162,7 +162,7 @@
     font-family: inherit;
     font-size: 15px;
     font-weight: 600;
-    color: #000000;
+    color: var(--crm-text);
     cursor: pointer;
 }
 
@@ -171,9 +171,9 @@
 }
 
 .componentsBox {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--crm-border-strong);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--crm-surface-deep);
     overflow: hidden;
 }
 
@@ -183,7 +183,7 @@
     justify-content: space-between;
     gap: 8px;
     padding: 10px 12px;
-    border-bottom: 1px solid #eeeeee;
+    border-bottom: 1px solid var(--crm-border-subtle);
     min-height: 40px;
 }
 
@@ -213,7 +213,7 @@
     font-family: inherit;
     font-size: 14px;
     font-weight: 500;
-    color: #333333;
+    color: var(--crm-text);
     cursor: pointer;
 }
 
@@ -226,7 +226,7 @@
 }
 
 .componentOrder {
-    color: #888888;
+    color: var(--crm-text-secondary);
     font-weight: 600;
     flex-shrink: 0;
 }
@@ -259,7 +259,7 @@
     padding: 16px;
     text-align: center;
     font-size: 14px;
-    color: #8c8c8c;
+    color: var(--crm-text-secondary);
 }
 
 .footer {
@@ -288,18 +288,18 @@
 .addBtn,
 .doneBtn {
     padding: 12px 16px;
-    background: #155DA4;
-    color: #ffffff;
-    border: none;
+    background: var(--crm-btn-primary-bg);
+    color: var(--crm-btn-primary-text);
+    border: 1.5px solid var(--crm-btn-primary-border);
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
     font-family: inherit;
-    transition: background 0.15s ease;
+    transition: opacity 0.15s ease;
 }
 
 .addBtn:hover,
 .doneBtn:hover {
-    background: #0f4a85;
+    opacity: 0.92;
 }

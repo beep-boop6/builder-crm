@@ -652,7 +652,7 @@ const FONT_OPTIONS = [
     { value: 'Inter', label: 'Inter' },
     { value: 'Arial', label: 'Arial' },
     { value: 'Georgia', label: 'Georgia' },
-    { value: 'monospace', label: 'Monospace' },
+    { value: 'monospace', label: 'Моноширинный' },
 ];
 
 interface TextSectionProps {

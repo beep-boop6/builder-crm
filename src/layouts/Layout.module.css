@@ -2,7 +2,7 @@
     display: flex;
     width: 100%;
     min-height: 100vh;
-    background: #ffffff;
+    background: var(--crm-surface);
 }
 
 .mainColumn {

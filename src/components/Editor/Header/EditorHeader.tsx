@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import undoArrowIcon from '@/assets/icons/undo_arrow.svg';
 import logoIcon from '@/assets/icons/logo.svg';
 import { BreadcrumbSeparator } from '@/components/Common/BreadcrumbSeparator';
-import themeIcon from '@/assets/icons/theme-light.svg';
+import themeLightIcon from '@/assets/icons/theme-light.svg';
+import themeDarkIcon from '@/assets/icons/theme-dark.svg';
 import { useUIStore } from '@/store/uiStore';
 import styles from './EditorHeader.module.css';
 
@@ -30,6 +31,8 @@ export const EditorHeader = ({
 }: EditorHeaderProps) => {
     const navigate = useNavigate();
     const toggleTheme = useUIStore((state) => state.toggleTheme);
+    const themeMode = useUIStore((state) => state.theme);
+    const themeIcon = themeMode === 'dark' ? themeDarkIcon : themeLightIcon;
 
     const displayName = projectName || 'Без названия';
 

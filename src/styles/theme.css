@@ -1,0 +1,149 @@
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --crm-bg: #f5f5f5;
+  --crm-surface: #ffffff;
+  --crm-surface-elevated: #ffffff;
+  --crm-surface-deep: #fafafa;
+  --crm-canvas: #f0f0f0;
+  --crm-border: #f0f0f0;
+  --crm-border-strong: #e0e0e0;
+  --crm-border-subtle: #eeeeee;
+
+  --crm-text: #1a1a1a;
+  --crm-text-secondary: #595959;
+  --crm-text-muted: #262626;
+  --crm-text-disabled: #bfbfbf;
+  --crm-text-accent: #155da4;
+
+  --crm-hover: #f5f5f5;
+  --crm-active-bg: #e6f2ff;
+  --crm-overlay: rgba(0, 0, 0, 0.45);
+  --crm-shadow: rgba(0, 0, 0, 0.08);
+  --crm-shadow-strong: rgba(0, 0, 0, 0.12);
+
+  --crm-brand: #155da4;
+  --crm-brand-hover: #124a88;
+  --crm-brand-bg: #e6f2ff;
+  --crm-brand-bg-hover: #d6e8ff;
+  --crm-accent: #155da4;
+  --crm-tab-active-border: #155da4;
+
+  --crm-btn-primary-bg: #155da4;
+  --crm-btn-primary-text: #ffffff;
+  --crm-btn-primary-border: #155da4;
+  --crm-btn-ghost-bg: transparent;
+  --crm-btn-ghost-text: #155da4;
+  --crm-btn-ghost-border: #155da4;
+
+  --crm-input-bg: #ffffff;
+  --crm-input-border: #d9d9d9;
+  --crm-input-placeholder: #bfbfbf;
+
+  --crm-icon-filter: none;
+  --crm-scrollbar: #bfbfbf;
+
+  --crm-page-header-bg: #e6f2ff;
+  --crm-page-header-border: #c5ddf5;
+
+  --crm-panel-section-border: #ebebeb;
+  --crm-panel-field-border: #155da4;
+  --crm-panel-field-accent: #155da4;
+  --crm-panel-muted: #555555;
+  --crm-panel-icon: #155da4;
+  --crm-panel-badge-bg: #e6f2ff;
+  --crm-panel-badge-border: #155da4;
+  --crm-panel-badge-text: #155da4;
+  --crm-panel-align-active-bg: #155da4;
+  --crm-panel-align-active-text: #ffffff;
+  --crm-panel-input-border: #155da4;
+  --crm-panel-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23155DA4' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
+  --crm-panel-select-arrow-lg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23155DA4' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Figma: Главный */
+  --crm-bg: #272f44;
+  --crm-surface: #272f44;
+  --crm-surface-elevated: #596480;
+  --crm-surface-deep: #20283c;
+  /* Figma: Второй главный — холст */
+  --crm-canvas: #596480;
+
+  --crm-border: rgba(255, 255, 255, 0.12);
+  --crm-border-strong: rgba(255, 255, 255, 0.25);
+  --crm-border-subtle: rgba(255, 255, 255, 0.08);
+
+  --crm-text: #ececec;
+  --crm-text-secondary: rgba(236, 236, 236, 0.72);
+  --crm-text-muted: rgba(236, 236, 236, 0.55);
+  --crm-text-disabled: rgba(236, 236, 236, 0.35);
+  --crm-text-accent: #cfe2ff;
+
+  /* Figma: Высветление hover */
+  --crm-hover: #35405f;
+  --crm-active-bg: #35405f;
+  --crm-overlay: rgba(0, 0, 0, 0.55);
+  --crm-shadow: rgba(0, 0, 0, 0.35);
+  --crm-shadow-strong: rgba(0, 0, 0, 0.5);
+
+  --crm-brand: #155da4;
+  --crm-brand-hover: #3d8fd4;
+  --crm-brand-bg: rgba(207, 226, 255, 0.12);
+  --crm-brand-bg-hover: rgba(207, 226, 255, 0.2);
+  --crm-accent: #cfe2ff;
+  --crm-tab-active-border: #ececec;
+
+  --crm-btn-primary-bg: #ececec;
+  --crm-btn-primary-text: #272f44;
+  --crm-btn-primary-border: #ececec;
+  --crm-btn-ghost-bg: transparent;
+  --crm-btn-ghost-text: #ececec;
+  --crm-btn-ghost-border: rgba(255, 255, 255, 0.85);
+
+  --crm-input-bg: transparent;
+  --crm-input-border: rgba(255, 255, 255, 0.85);
+  --crm-input-placeholder: rgba(236, 236, 236, 0.45);
+
+  --crm-icon-filter: brightness(0) invert(1);
+  --crm-scrollbar: #596480;
+
+  --crm-page-header-bg: #596480;
+  --crm-page-header-border: rgba(255, 255, 255, 0.15);
+
+  --crm-panel-section-border: rgba(255, 255, 255, 0.12);
+  --crm-panel-field-border: rgba(255, 255, 255, 0.35);
+  --crm-panel-field-accent: rgba(236, 236, 236, 0.72);
+  --crm-panel-muted: rgba(236, 236, 236, 0.55);
+  --crm-panel-icon: #ececec;
+  --crm-panel-badge-bg: transparent;
+  --crm-panel-badge-border: rgba(255, 255, 255, 0.25);
+  --crm-panel-badge-text: #ececec;
+  --crm-panel-align-active-bg: #155da4;
+  --crm-panel-align-active-text: #ffffff;
+  --crm-panel-input-border: rgba(255, 255, 255, 0.35);
+  --crm-panel-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23ECECEC' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
+  --crm-panel-select-arrow-lg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ECECEC' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+}
+
+body {
+  background: var(--crm-bg);
+  color: var(--crm-text);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: var(--crm-scrollbar);
+  border-radius: 4px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: var(--crm-surface-deep);
+}

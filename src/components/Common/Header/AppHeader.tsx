@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-import themeIcon from '@/assets/icons/theme-light.svg';
+import themeLightIcon from '@/assets/icons/theme-light.svg';
+import themeDarkIcon from '@/assets/icons/theme-dark.svg';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
 import { useUIStore } from '@/store/uiStore';
 import { BreadcrumbSeparator } from '@/components/Common/BreadcrumbSeparator';
@@ -10,6 +11,8 @@ export const AppHeader = () => {
     const navigate = useNavigate();
     const breadcrumbs = useBreadcrumbs();
     const toggleTheme = useUIStore((state) => state.toggleTheme);
+    const themeMode = useUIStore((state) => state.theme);
+    const themeIcon = themeMode === 'dark' ? themeDarkIcon : themeLightIcon;
 
     return (
         <header className={styles.header}>
