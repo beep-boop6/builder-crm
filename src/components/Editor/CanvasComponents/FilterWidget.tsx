@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { Select, DatePicker, Input } from 'antd';
 import type { EditorComponent } from '@/store/editorStore';
 import { useEditorStore } from '@/store/editorStore';
@@ -10,6 +10,7 @@ import {
     resolveTableRows,
 } from '@/utils/tableColumns';
 import { isFilterValueInvalid } from '@/utils/filterValidation';
+import { getCanvasPopupContainer, useCanvasPortal } from '@/components/Editor/Canvas/CanvasPortalContext';
 import styles from './FilterWidget.module.css';
 
 const FilterBindingStatus = ({
@@ -113,8 +114,30 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
 
     const textInputStatus = valueInvalid ? 'error' : undefined;
 
-    const popupContainer = (trigger: HTMLElement) =>
-        rootRef.current ?? trigger.parentElement ?? document.body;
+    const canvasPortal = useCanvasPortal();
+
+    const popupContainer = useCallback(
+        (trigger: HTMLElement) => getCanvasPopupContainer(canvasPortal, trigger),
+        [canvasPortal]
+    );
+
+    const stopCanvasBubble = (event: React.SyntheticEvent) => {
+        event.stopPropagation();
+    };
+
+    const selectPopupProps = {
+        getPopupContainer: popupContainer,
+        popupClassName: styles.filterPopup,
+        onMouseDown: stopCanvasBubble,
+        onClick: stopCanvasBubble,
+    };
+
+    const datePopupProps = {
+        getPopupContainer: popupContainer,
+        popupClassName: styles.filterPopup,
+        onMouseDown: stopCanvasBubble,
+        onClick: stopCanvasBubble,
+    };
 
     return (
         <div
@@ -141,8 +164,8 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
                         value: column.id,
                         label: column.title,
                     }))}
-                    getPopupContainer={popupContainer}
                     popupMatchSelectWidth
+                    {...selectPopupProps}
                 />
             ) : (
                 <span className={styles.noTableHint}>Привяжите фильтр к таблице</span>
@@ -157,8 +180,8 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
                     allowClear
                     onChange={(next) => patch({ value: next ?? '' })}
                     options={statusOptions}
-                    getPopupContainer={popupContainer}
                     popupMatchSelectWidth
+                    {...selectPopupProps}
                 />
             ) : null}
 
@@ -167,7 +190,8 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
                     <DatePicker
                         size="small"
                         className={styles.control}
-                        getPopupContainer={popupContainer}
+                        placement="bottomLeft"
+                        {...datePopupProps}
                         onChange={(_, dateString) =>
                             patch({ value: Array.isArray(dateString) ? dateString[0] : dateString })
                         }
@@ -175,7 +199,8 @@ export const FilterWidget = ({ component, showBindingStatus = false }: FilterWid
                     <DatePicker
                         size="small"
                         className={styles.control}
-                        getPopupContainer={popupContainer}
+                        placement="bottomLeft"
+                        {...datePopupProps}
                         onChange={(_, dateString) =>
                             patch({ valueTo: Array.isArray(dateString) ? dateString[0] : dateString })
                         }

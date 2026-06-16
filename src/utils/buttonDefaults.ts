@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { ButtonProps } from '@/types/button';
+import { BRAND_PRIMARY } from '@/constants/brandColors';
 
 export const DEFAULT_BUTTON_PROPS: ButtonProps = {
     targetPageId: '',
@@ -12,7 +13,7 @@ export type ButtonSize = 'small' | 'middle' | 'large';
 
 export const BUTTON_VARIANT_STYLES: Record<ButtonVariant, Pick<CSSProperties, 'backgroundColor' | 'color' | 'border'>> = {
     primary: {
-        backgroundColor: '#155DA4',
+        backgroundColor: BRAND_PRIMARY,
         color: '#ffffff',
         border: 'none',
     },
@@ -23,8 +24,8 @@ export const BUTTON_VARIANT_STYLES: Record<ButtonVariant, Pick<CSSProperties, 'b
     },
     dashed: {
         backgroundColor: '#ffffff',
-        color: '#155DA4',
-        border: '1px dashed #155DA4',
+        color: BRAND_PRIMARY,
+        border: `1px dashed ${BRAND_PRIMARY}`,
     },
 };
 

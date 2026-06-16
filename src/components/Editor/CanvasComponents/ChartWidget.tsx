@@ -65,7 +65,7 @@ const normalizeHex = (value: string | undefined, fallback: string): string => {
 
 const PIE_SLICE_PALETTE = [
     '#155DA4',
-    '#1976d2',
+    '#1a6bb8',
     '#42a5f5',
     '#64b5f6',
     '#5c6bc0',

@@ -54,7 +54,7 @@ const DEFAULT_LIBRARY: Record<string, ComponentDefinition> = {
             xAxisKey: '',
             yAxisKey: '',
             backgroundColor: '#FFFFFF',
-            style: { color: '#1976d2', backgroundColor: '#FFFFFF' },
+            style: { color: '#155DA4', backgroundColor: '#FFFFFF' },
         },
         editableFields: ['chartType', 'tableComponentId', 'chartMapping', 'color', 'backgroundColor', 'width', 'height', 'x', 'y'],
         isBuiltIn: true,

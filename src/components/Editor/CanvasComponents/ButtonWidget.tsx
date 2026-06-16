@@ -22,6 +22,8 @@ export const ButtonWidget = ({
     const buttonProps = normalizeButtonProps(component.props);
     const variantStyle = getButtonVariantStyle(buttonProps.variant);
     const sizeStyle = getButtonSizeStyle(buttonProps.size);
+    const isPrimaryVariant = buttonProps.variant === 'primary';
+    const isDashedVariant = buttonProps.variant === 'dashed';
     const targetPage = pages.find((page) => page.id === buttonProps.targetPageId);
     const canNavigate =
         readonly && Boolean(buttonProps.targetPageId) && Boolean(targetPage);
@@ -40,9 +42,13 @@ export const ButtonWidget = ({
     const buttonStyle: CSSProperties = {
         width: '100%',
         height: '100%',
-        backgroundColor: component.backgroundColor ?? variantStyle.backgroundColor,
+        backgroundColor: isPrimaryVariant
+            ? variantStyle.backgroundColor
+            : (component.backgroundColor ?? variantStyle.backgroundColor),
         borderRadius: `${component.borderRadius ?? 8}px`,
-        color: component.color ?? variantStyle.color,
+        color: isPrimaryVariant || isDashedVariant
+            ? variantStyle.color
+            : (component.color ?? variantStyle.color),
         fontSize: component.fontSize ? `${component.fontSize}px` : sizeStyle.fontSize,
         fontWeight: component.fontWeight ?? 600,
         fontFamily: 'inherit',

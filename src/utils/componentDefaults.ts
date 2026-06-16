@@ -2,6 +2,7 @@ import type { ComponentDefinition } from '@/store/componentStore';
 import type { EditorComponent } from '@/store/editorStore';
 import { generateGuid } from '@/utils';
 import { DEFAULT_CONTACT_CARD_PROPS } from '@/utils/contactCardDefaults';
+import { BRAND_PRIMARY } from '@/constants/brandColors';
 import { isCardComponentType } from '@/utils/componentFilters';
 import { resolveFormHeight } from '@/utils/formLayout';
 
@@ -69,7 +70,7 @@ export const buildComponentFromDefinition = (
         backgroundColor:
             type === 'table' || type === 'chart' || isCard || type === 'form' || type === 'filter'
                 ? '#ffffff'
-                : '#155DA4',
+                : BRAND_PRIMARY,
         color:
             type === 'table'
                 ? '#000000'

@@ -151,6 +151,26 @@
     width: 100%;
 }
 
+.submitRow :global(.ant-btn-primary) {
+    background-color: #155DA4;
+    border-color: #155DA4;
+}
+
+.submitRow :global(.ant-btn-primary:not(:disabled):hover) {
+    background-color: #124a88;
+    border-color: #124a88;
+}
+
+.searchInput :global(.ant-input-search-button) {
+    background-color: #155DA4;
+    border-color: #155DA4;
+}
+
+.searchInput :global(.ant-input-search-button:not(:disabled):hover) {
+    background-color: #124a88;
+    border-color: #124a88;
+}
+
 .horizontal .submitRow {
     width: auto;
     margin-left: auto;

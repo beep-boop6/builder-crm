@@ -1,11 +1,12 @@
 import { useEditorStore, EditorComponent } from '@/store/editorStore';
 import { Rnd } from 'react-rnd';
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
 import { buildComponentFromDefinition, buildComponentFromSnapshot } from '@/utils/componentDefaults';
 import { clampComponentAfterResize, getComponentResizeBounds } from '@/utils/formResize';
 import { isFormSearchMode, SEARCH_FORM_BORDER_RADIUS } from '@/utils/formLayout';
+import { CanvasPortalContext } from './CanvasPortalContext';
 import styles from './Canvas.module.css';
 import { TableWidget } from '../CanvasComponents/TableWidget';
 import { ChartWidget } from '../CanvasComponents/ChartWidget';
@@ -51,6 +52,12 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
     const getPreset = useReusablePresetStore((state) => state.getPreset);
 
     const canvasRef = useRef<HTMLDivElement>(null);
+    const [canvasElement, setCanvasElement] = useState<HTMLDivElement | null>(null);
+
+    const handleCanvasRef = useCallback((node: HTMLDivElement | null) => {
+        canvasRef.current = node;
+        setCanvasElement(node);
+    }, []);
 
     const getCanvasBounds = useCallback(() => {
         const canvasRect = canvasRef.current?.getBoundingClientRect();
@@ -257,8 +264,9 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
     };
 
     return (
+        <CanvasPortalContext.Provider value={canvasElement}>
         <div
-            ref={canvasRef}
+            ref={handleCanvasRef}
             className={styles.canvas}
             onClick={readonly ? undefined : handleCanvasClick}
             onContextMenu={(e) => e.preventDefault()}
@@ -317,7 +325,7 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                             boxSizing: 'border-box',
                             zIndex: component.zIndex || 1,
                             opacity,
-                            overflow: isSearchForm ? 'visible' : undefined,
+                            overflow: component.type === 'filter' ? 'visible' : isSearchForm ? 'visible' : undefined,
                         }}
                         bounds="parent"
                         minWidth={minWidth}
@@ -361,7 +369,10 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                                     : { bottomRight: true }
                         }
                     >
-                        <div className={styles.componentShell} style={shellStyle}>
+                        <div
+                            className={`${styles.componentShell} ${component.type === 'filter' ? styles.componentShellFilter : ''}`}
+                            style={shellStyle}
+                        >
                             {renderComponentContent(component)}
                         </div>
                     </Rnd>
@@ -383,5 +394,6 @@ export const Canvas = ({ components, readonly = false }: CanvasProps) => {
                 </div>
             )}
         </div>
+        </CanvasPortalContext.Provider>
     );
 };

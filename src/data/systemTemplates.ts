@@ -42,7 +42,7 @@ const chartProps = (
     xAxisKey: xField,
     yAxisKey: yField,
     backgroundColor: '#FFFFFF',
-    style: { color: '#1976d2', backgroundColor: '#FFFFFF' },
+    style: { color: '#155DA4', backgroundColor: '#FFFFFF' },
     borderWidth: 1,
     borderColor: '#E8E8E8',
 });
