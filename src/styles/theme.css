@@ -60,6 +60,17 @@
   --crm-panel-input-border: #155da4;
   --crm-panel-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23155DA4' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
   --crm-panel-select-arrow-lg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23155DA4' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+
+  --crm-project-card-bg: #ffffff;
+  --crm-project-card-name: #1a1a1a;
+  --crm-project-card-bar-line: #155da4;
+  --crm-project-card-bar-hover: #dbe9f7;
+  --crm-project-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  --crm-project-card-shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.12);
+  --crm-project-templates-bg: #ffffff;
+  --crm-project-templates-border: #155da4;
+  --crm-project-templates-text: #155da4;
+  --crm-project-templates-hover: #f5faff;
 }
 
 [data-theme='dark'] {
@@ -127,6 +138,17 @@
   --crm-panel-input-border: rgba(255, 255, 255, 0.35);
   --crm-panel-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23ECECEC' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
   --crm-panel-select-arrow-lg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ECECEC' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+
+  --crm-project-card-bg: #3d4459;
+  --crm-project-card-name: #ececec;
+  --crm-project-card-bar-line: #ececec;
+  --crm-project-card-bar-hover: rgba(255, 255, 255, 0.2);
+  --crm-project-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  --crm-project-card-shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.38);
+  --crm-project-templates-bg: transparent;
+  --crm-project-templates-border: rgba(255, 255, 255, 0.85);
+  --crm-project-templates-text: #ececec;
+  --crm-project-templates-hover: rgba(255, 255, 255, 0.08);
 }
 
 body {

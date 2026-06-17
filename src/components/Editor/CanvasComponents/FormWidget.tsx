@@ -309,7 +309,10 @@ export const FormWidget = ({ component }: FormWidgetProps) => {
         <div
             className={`${styles.formWidget} ${styles.formWidgetDefault}`}
             style={{
-                backgroundColor: component.backgroundColor || '#fff',
+                backgroundColor:
+                    component.backgroundColor && component.backgroundColor !== 'transparent'
+                        ? component.backgroundColor
+                        : '#fff',
                 alignItems: flexAlignFromTextAlign(),
             }}
         >

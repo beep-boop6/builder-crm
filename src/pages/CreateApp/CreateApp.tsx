@@ -4,6 +4,7 @@ import {Alert} from 'antd';
 import CreateAppPopup from '@/components/CreateAppPopup/CreateAppPopup';
 import {useProjectStore} from '@/store/projectStore';
 import arrowIcon from '@/assets/icons/arrow.svg';
+import deleteIcon from '@/assets/icons/delete.svg';
 import styles from './CreateApp.module.css';
 import type {Project} from '@/types';
 
@@ -75,13 +76,13 @@ const CreateApp = () => {
 
     const scrollLeft = () => {
         if (carouselRef.current) {
-            carouselRef.current.scrollBy({left: -220, behavior: 'smooth'});
+            carouselRef.current.scrollBy({left: -224, behavior: 'smooth'});
         }
     };
 
     const scrollRight = () => {
         if (carouselRef.current) {
-            carouselRef.current.scrollBy({left: 220, behavior: 'smooth'});
+            carouselRef.current.scrollBy({left: 224, behavior: 'smooth'});
         }
     };
 
@@ -123,22 +124,23 @@ const CreateApp = () => {
                     )}
                     <div className={styles.carousel} ref={carouselRef}>
                         {projects.map((project) => (
-                            <div 
-                                key={project.id} 
+                            <div
+                                key={project.id}
                                 className={styles.projectCard}
                                 onClick={() => handleProjectClick(project)}
                             >
                                 <button
+                                    type="button"
                                     className={styles.deleteButton}
                                     onClick={(e) => handleDeleteProject(e, project.id)}
                                     title="Удалить проект"
                                 >
-                                    <img src="/src/assets/icons/delete.svg" alt="Удалить" width={16} height={16} />
+                                    <img src={deleteIcon} alt="" className={styles.deleteIcon} />
                                 </button>
-                                <div className={styles.projectIcon}>
-                                    📁
+                                <div className={styles.projectCardBody} />
+                                <div className={styles.projectNameBar}>
+                                    <p className={styles.projectName}>{project.name || 'Без названия'}</p>
                                 </div>
-                                <p className={styles.projectName}>{project.name}</p>
                             </div>
                         ))}
                     </div>

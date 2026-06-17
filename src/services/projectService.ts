@@ -6,7 +6,9 @@ import { elementService } from './elementService';
 import { pageService } from './pageService';
 import { signalrService } from './signalrService';
 import { syncProjectPages } from './projectSyncService';
+import { projectMetaService } from './projectMetaService';
 import { cloneTemplatePagesForProject } from '@/utils/templateClone';
+import type { AxiosError } from 'axios';
 import {
     fromBackendNavigation,
     toBackendNavigation,
@@ -17,6 +19,14 @@ type RawProject = Partial<Project> & {
     Id?: string;
     Name?: string;
     NavigationType?: unknown;
+};
+
+const applyNavigationOverride = (project: Project): Project => {
+    const navigationOverride = projectMetaService.getNavigationType(project.id);
+    if (!navigationOverride) {
+        return project;
+    }
+    return { ...project, navigationType: navigationOverride };
 };
 
 const mapProject = (input: RawProject): Project => ({
@@ -98,10 +108,10 @@ export const projectService = {
         const project = mapProject(rawProject);
         const pages = await loadProjectPages(project);
 
-        return {
+        return applyNavigationOverride({
             ...project,
             pages,
-        };
+        });
     },
 
     create: async (data: { name: string; navigationType: 'sidebar' | 'topbar' }): Promise<Project> => {
@@ -145,6 +155,7 @@ export const projectService = {
         const current = await projectService.getById(id);
         const nextPages = data.pages ?? current.pages;
         const nextName = data.name ?? current.name;
+        const nextNavigationType = data.navigationType ?? current.navigationType;
 
         if (nextName !== current.name) {
             await requestWithFallback<unknown, { id: string; json: string }>({
@@ -157,13 +168,35 @@ export const projectService = {
             });
         }
 
-        const { pages: syncedPages } = await syncProjectPages(id, nextPages);
+        if (data.navigationType && data.navigationType !== current.navigationType) {
+            try {
+                await requestWithFallback<unknown, { NavigationType: BackendNavigationType }>({
+                    method: 'PUT',
+                    paths: [`/projects/${id}/set-navigation`],
+                    data: {
+                        NavigationType: toBackendNavigation(data.navigationType),
+                    },
+                });
+                projectMetaService.removeNavigationOverride(id);
+            } catch (error) {
+                const status = (error as AxiosError).response?.status;
+                if (status === 404 || status === 405) {
+                    projectMetaService.setNavigationType(id, data.navigationType);
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        const { pages: syncedPages } = data.pages
+            ? await syncProjectPages(id, nextPages)
+            : { pages: current.pages };
 
         return {
             ...current,
             ...data,
             name: nextName,
-            navigationType: data.navigationType ?? current.navigationType,
+            navigationType: nextNavigationType,
             pages: syncedPages,
         };
     },

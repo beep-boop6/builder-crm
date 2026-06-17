@@ -5,7 +5,6 @@ import previewIcon from '@/assets/icons/preview.svg';
 import saveIcon from '@/assets/icons/save.svg';
 import templateIcon from '@/assets/icons/template.svg';
 import settingsIcon from '@/assets/icons/settings.svg';
-import { useNavigate } from 'react-router-dom';
 import styles from './EditorSidebar.module.css';
 
 export interface EditorToolbarButtonsProps {
@@ -15,6 +14,7 @@ export interface EditorToolbarButtonsProps {
     onSave: () => void;
     onSaveAsTemplate: () => void;
     onPreview: () => void;
+    onOpenSettings: () => void;
     isLibraryOpen?: boolean;
     isPagesOpen?: boolean;
     saving?: boolean;
@@ -47,11 +47,11 @@ export const EditorToolbarButtons = ({
     onSave,
     onSaveAsTemplate,
     onPreview,
+    onOpenSettings,
     isLibraryOpen = false,
     isPagesOpen = false,
     saving = false,
 }: EditorToolbarButtonsProps) => {
-    const navigate = useNavigate();
     const order = variant === 'topbar' ? TOPBAR_ORDER : SIDEBAR_ORDER;
 
     const buttons: Record<ToolbarButtonKey, ReactNode> = {
@@ -116,7 +116,7 @@ export const EditorToolbarButtons = ({
                 key="settings"
                 type="button"
                 className={styles.menuButton}
-                onClick={() => navigate('/settings')}
+                onClick={onOpenSettings}
                 title="Настройки"
             >
                 <img src={settingsIcon} alt="" className={styles.iconImage} />

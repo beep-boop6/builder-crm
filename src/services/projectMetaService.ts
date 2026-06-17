@@ -25,6 +25,26 @@ export const projectMetaService = {
         return readAll()[projectId] ?? null;
     },
 
+    getNavigationType(projectId: string): 'sidebar' | 'topbar' | null {
+        return readAll()[projectId]?.navigationType ?? null;
+    },
+
+    setNavigationType(projectId: string, navigationType: 'sidebar' | 'topbar'): void {
+        const all = readAll();
+        const existing = all[projectId];
+        all[projectId] = {
+            navigationType,
+            pages: existing?.pages ?? [],
+        };
+        writeAll(all);
+    },
+
+    removeNavigationOverride(projectId: string): void {
+        const all = readAll();
+        delete all[projectId];
+        writeAll(all);
+    },
+
     set(projectId: string, meta: ProjectMeta): void {
         const all = readAll();
         all[projectId] = meta;

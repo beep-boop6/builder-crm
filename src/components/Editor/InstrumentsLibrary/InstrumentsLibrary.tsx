@@ -8,6 +8,7 @@ import cardIcon from '@/assets/icons/card.svg';
 import filterIcon from '@/assets/icons/filter.svg';
 import graphIcon from '@/assets/icons/graph.svg';
 import tableIcon from '@/assets/icons/Table.svg';
+import formIcon from '@/assets/icons/form.svg';
 import { useEditorStore, type EditorComponent } from '@/store/editorStore';
 import { useComponentStore } from '@/store/componentStore';
 import { useReusablePresetStore } from '@/store/reusablePresetStore';
@@ -33,6 +34,7 @@ const COMPONENT_TYPE_ICONS: Record<string, string> = {
     table: tableIcon,
     chart: graphIcon,
     filter: filterIcon,
+    form: formIcon,
 };
 
 const getComponentLibraryIconSrc = (type: string): string | null => {
@@ -193,9 +195,6 @@ export const InstrumentsLibrary = ({ isOpen }: Props) => {
                     draggable={false}
                 />
             );
-        }
-        if (type === 'form') {
-            return <span className={styles.fallbackIcon} aria-hidden>📝</span>;
         }
         return (
             <img

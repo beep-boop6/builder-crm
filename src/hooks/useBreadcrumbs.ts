@@ -16,10 +16,6 @@ const ROUTE_BREADCRUMBS: Record<string, BreadcrumbItem[]> = {
         { label: 'Главная', path: '/' },
         { label: 'Шаблоны' },
     ],
-    '/settings': [
-        { label: 'Главная', path: '/' },
-        { label: 'Настройки' },
-    ],
     '/admin': [
         { label: 'Главная', path: '/' },
         { label: 'Админка' },

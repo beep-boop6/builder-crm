@@ -1,7 +1,6 @@
 import {useNavigate} from 'react-router-dom';
 import homeIcon from '@/assets/icons/home_no_active-light.svg';
 import createAppIcon from '@/assets/icons/edit_no_active-light.svg';
-import settingsIcon from '@/assets/icons/settings.svg';
 import logoIcon from '@/assets/icons/logo.svg';
 import styles from './SideMenu.module.css';
 
@@ -14,10 +13,6 @@ export const SideMenu = () => {
 
     const handleCreateAppClick = () => {
         navigate('/create-app');
-    };
-
-    const handleSettingsClick = () => {
-        navigate('/settings');
     };
 
     return (
@@ -51,13 +46,6 @@ export const SideMenu = () => {
 
             {/* 4. Нижняя панель с кнопками - прижимается к низу */}
             <div className={styles.bottomPanel}>
-                <button
-                    className={styles.menuButton}
-                    onClick={handleSettingsClick}
-                    title="Настройки"
-                >
-                    <img src={settingsIcon} alt="Настройки" className={styles.iconImage}/>
-                </button>
             </div>
         </div>
     );

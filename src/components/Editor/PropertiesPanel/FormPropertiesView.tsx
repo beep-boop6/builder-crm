@@ -93,24 +93,38 @@ export const FormPropertiesView = ({ component, onUpdateProps }: Props) => {
                 <PropertySelect
                     value={(props.formMode as FormMode) || 'default'}
                     onChange={(event) => {
-                        const mode = event.target.value;
+                        const mode = event.target.value as FormMode;
                         if (mode === 'search') {
                             const { width, height } = clampSearchFormDimensions(component.width);
                             const borderWidth =
                                 typeof props.borderWidth === 'number' ? props.borderWidth : 0;
+                            const savedBackground =
+                                component.backgroundColor && component.backgroundColor !== 'transparent'
+                                    ? component.backgroundColor
+                                    : ((props.savedFormBackgroundColor as string | undefined) ?? '#ffffff');
                             applyPatch({
                                 formMode: mode,
+                                savedFormBackgroundColor: savedBackground,
                                 ...(borderWidth <= 0 ? { borderWidth: 1 } : {}),
                             });
                             updateComponent(component.id, {
                                 width,
                                 height,
                                 borderRadius: component.borderRadius ?? SEARCH_FORM_BORDER_RADIUS,
-                                backgroundColor: 'transparent',
                             });
                             return;
                         }
+
+                        const restoredBackground =
+                            (props.savedFormBackgroundColor as string | undefined)
+                            ?? (component.backgroundColor !== 'transparent'
+                                ? component.backgroundColor
+                                : '#ffffff');
+
                         applyPatch({ formMode: mode });
+                        if (component.backgroundColor !== restoredBackground) {
+                            updateComponent(component.id, { backgroundColor: restoredBackground });
+                        }
                     }}
                     options={[
                         { value: 'default', label: 'Форма (поля + отправка)' },

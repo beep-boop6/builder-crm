@@ -12,6 +12,7 @@ import { PropertiesPanel } from '@/components/Editor/PropertiesPanel/PropertiesP
 import { InstrumentsLibrary } from '@/components/Editor/InstrumentsLibrary/InstrumentsLibrary';
 import { PagesPanel } from '@/components/Editor/PagesPanel/PagesPanel';
 import { SaveProjectTemplateModal } from '@/components/Editor/SaveProjectTemplateModal';
+import { EditorSettingsPanel } from '@/components/Editor/EditorSettingsPanel';
 import { useTemplateStore } from '@/store/templateStore';
 import { mergeCurrentPageComponents } from '@/utils/projectSnapshot';
 import styles from './ProjectEditor.module.css';
@@ -21,7 +22,7 @@ const ProjectEditorPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const isPreview = location.pathname.endsWith('/preview');
-    const { currentProject, loadProject, loading, error } = useProjectStore();
+    const { currentProject, loadProject, loading, error, updateProjectSettings, settingsSaving } = useProjectStore();
     const {
         components,
         initProject,
@@ -46,6 +47,7 @@ const ProjectEditorPage = () => {
     const [isLibraryOpen, setIsLibraryOpen] = useState(false);
     const [isPagesOpen, setIsPagesOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
         if (projectId) loadProject(projectId);
@@ -139,6 +141,32 @@ const ProjectEditorPage = () => {
         }
     };
 
+    const handleProjectNameChange = async (name: string) => {
+        if (!currentProject || name === currentProject.name) {
+            return;
+        }
+
+        try {
+            await updateProjectSettings(currentProject.id, { name });
+            message.success('Название проекта сохранено');
+        } catch {
+            message.error('Не удалось сохранить название проекта');
+        }
+    };
+
+    const handleNavigationTypeChange = async (navigationType: 'sidebar' | 'topbar') => {
+        if (!currentProject || navigationType === currentProject.navigationType) {
+            return;
+        }
+
+        try {
+            await updateProjectSettings(currentProject.id, { navigationType });
+            message.success('Расположение меню сохранено');
+        } catch {
+            message.error('Не удалось сохранить расположение меню');
+        }
+    };
+
     const projectName = currentProject?.name ?? 'Без названия';
     const isTopNavigation = currentProject?.navigationType === 'topbar';
 
@@ -154,6 +182,7 @@ const ProjectEditorPage = () => {
         onSave: handleManualSave,
         onSaveAsTemplate: () => setIsTemplateModalOpen(true),
         onPreview: handlePreview,
+        onOpenSettings: () => setIsSettingsOpen(true),
         isLibraryOpen,
         isPagesOpen,
         saving,
@@ -234,6 +263,18 @@ const ProjectEditorPage = () => {
                 onCancel={() => setIsTemplateModalOpen(false)}
                 onSubmit={handleSaveAsTemplate}
             />
+
+            {!isPreview && currentProject ? (
+                <EditorSettingsPanel
+                    open={isSettingsOpen}
+                    onClose={() => setIsSettingsOpen(false)}
+                    projectName={projectName}
+                    navigationType={currentProject.navigationType}
+                    saving={settingsSaving}
+                    onProjectNameChange={handleProjectNameChange}
+                    onNavigationTypeChange={handleNavigationTypeChange}
+                />
+            ) : null}
         </div>
     );
 };
